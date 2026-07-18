@@ -1,3 +1,4 @@
+import Link from "next/link";
 import AsciiScene from "@/components/hero/ascii-scene";
 import GreetingTicker from "@/components/hero/greeting-ticker";
 
@@ -32,18 +33,18 @@ export default function Home() {
         </p>
 
         <div className="mt-9 flex items-center gap-4">
-          <a
-            href="#"
+          <Link
+            href="/signup"
             className="rounded-full bg-sky-400 px-7 py-2.5 text-sm font-medium text-[#05070d] transition-colors hover:bg-sky-300"
           >
             Sign up
-          </a>
-          <a
-            href="#"
+          </Link>
+          <Link
+            href="/login"
             className="rounded-full border border-white/15 px-7 py-2.5 text-sm font-medium text-zinc-100 backdrop-blur-sm transition-colors hover:border-white/30 hover:bg-white/5"
           >
             Log in
-          </a>
+          </Link>
         </div>
       </div>
 
