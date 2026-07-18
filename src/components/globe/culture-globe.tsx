@@ -4,8 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import * as THREE from "three";
 import type { GlobeMethods } from "react-globe.gl";
-import type { CountryCollection, CountryFeature } from "@/lib/geo-types";
-import { SEMANTIC_CONNECTIONS } from "@/lib/geo-types";
+import type { CountryCollection, CountryFeature, SemanticConnection } from "@/lib/geo-types";
 import CulturePanel from "@/components/globe/culture-panel";
 import ConnectionTicker from "@/components/globe/connection-ticker";
 import { GLOBE_PALETTES } from "@/lib/globe-palettes";
@@ -33,12 +32,30 @@ export default function CultureGlobe() {
   const [hovered, setHovered] = useState<CountryFeature | null>(null);
   const [panel, setPanel] = useState<PanelView>({ kind: "idle" });
   const [paletteIndex, setPaletteIndex] = useState(2);
+  const [connections, setConnections] = useState<SemanticConnection[]>([]);
   const palette = GLOBE_PALETTES[paletteIndex];
 
   useEffect(() => {
     fetch("/data/countries-enriched.geojson")
       .then((res) => res.json())
       .then((data: CountryCollection) => setCountries(data.features));
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/semantic-connections")
+      .then((res) => res.json())
+      .then((data: { connections?: SemanticConnection[] }) => {
+        if (!cancelled && Array.isArray(data.connections)) {
+          setConnections(data.connections);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setConnections([]);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -141,31 +158,33 @@ export default function CultureGlobe() {
   }, []);
 
   const arcsData = useMemo(() => {
-    if (countries.length === 0) return [];
+    if (countries.length === 0 || connections.length === 0) return [];
     const byIso2 = new Map(countries.map((c) => [c.properties.iso2, c]));
-    return SEMANTIC_CONNECTIONS.map((conn) => {
-      const from = byIso2.get(conn.fromIso2);
-      const to = byIso2.get(conn.toIso2);
-      if (!from || !to) return null;
-      return {
-        startLat: from.properties.lat,
-        startLng: from.properties.lng,
-        endLat: to.properties.lat,
-        endLng: to.properties.lng,
-        label: conn.label,
-        fromName: from.properties.name,
-        toName: to.properties.name,
-      };
-    }).filter(Boolean) as Array<{
-      startLat: number;
-      startLng: number;
-      endLat: number;
-      endLng: number;
-      label: string;
-      fromName: string;
-      toName: string;
-    }>;
-  }, [countries]);
+    return connections
+      .map((conn) => {
+        const from = byIso2.get(conn.fromIso2);
+        const to = byIso2.get(conn.toIso2);
+        if (!from || !to) return null;
+        return {
+          startLat: from.properties.lat,
+          startLng: from.properties.lng,
+          endLat: to.properties.lat,
+          endLng: to.properties.lng,
+          label: conn.label,
+          fromName: from.properties.name,
+          toName: to.properties.name,
+        };
+      })
+      .filter(Boolean) as Array<{
+        startLat: number;
+        startLng: number;
+        endLat: number;
+        endLng: number;
+        label: string;
+        fromName: string;
+        toName: string;
+      }>;
+  }, [countries, connections]);
 
   return (
     <div ref={containerRef} className="relative h-full w-full">
