@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import type { CountryFeature } from "@/lib/geo-types";
+import { fuzzyDistance, fuzzyThreshold } from "@/lib/fuzzy-match";
 
 export default function CountrySearch({
   countries,
@@ -18,7 +19,8 @@ export default function CountrySearch({
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
-    return countries
+
+    const substringMatches = countries
       .filter((c) => c.properties.name.toLowerCase().includes(q))
       .sort((a, b) => {
         const an = a.properties.name.toLowerCase();
@@ -27,8 +29,23 @@ export default function CountrySearch({
         const bStarts = bn.startsWith(q) ? 0 : 1;
         if (aStarts !== bStarts) return aStarts - bStarts;
         return an.localeCompare(bn);
-      })
-      .slice(0, 8);
+      });
+
+    if (substringMatches.length >= 8) return substringMatches.slice(0, 8);
+
+    const threshold = fuzzyThreshold(q.length);
+    const seen = new Set(substringMatches.map((c) => c.properties.iso2));
+    const fuzzyMatches = countries
+      .filter((c) => !seen.has(c.properties.iso2))
+      .map((c) => ({
+        country: c,
+        distance: fuzzyDistance(q, c.properties.name.toLowerCase()),
+      }))
+      .filter((m) => m.distance <= threshold)
+      .sort((a, b) => a.distance - b.distance)
+      .map((m) => m.country);
+
+    return [...substringMatches, ...fuzzyMatches].slice(0, 8);
   }, [countries, query]);
 
   const pick = (country: CountryFeature) => {
