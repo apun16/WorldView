@@ -3,6 +3,13 @@ import type { NextRequest } from "next/server";
 import { auth0 } from "@/lib/auth0";
 
 export async function proxy(request: NextRequest) {
+  // Auth0 mounts /auth/login, /auth/logout, /auth/callback — let the SDK
+  // handle those before any app redirects (must stay GET navigations).
+  const authRes = await auth0.middleware(request);
+  if (request.nextUrl.pathname.startsWith("/auth")) {
+    return authRes;
+  }
+
   const session = await auth0.getSession(request);
 
   if (request.nextUrl.pathname.startsWith("/explore") && !session) {
@@ -10,7 +17,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  return await auth0.middleware(request);
+  return authRes;
 }
 
 export const config = {

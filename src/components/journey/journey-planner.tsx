@@ -52,7 +52,12 @@ export default function JourneyPlanner({
   if (departed) {
     return (
       <JourneyShell country={country}>
-        <DepartureCard country={country} guide={guide} stops={stops} />
+        <DepartureCard
+          country={country}
+          guide={guide}
+          stops={stops}
+          localTime={localTime}
+        />
       </JourneyShell>
     );
   }

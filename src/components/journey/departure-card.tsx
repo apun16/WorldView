@@ -2,19 +2,22 @@ import Link from "next/link";
 import type { CountryInfo } from "@/lib/country-index";
 import type { AgentIdentity } from "@/lib/agents";
 import { findDestination, type DestinationId } from "@/lib/destinations";
+import type { LocalTime } from "@/lib/local-time";
+import WalkSession from "@/components/journey/walk-session";
 
 /**
- * The handoff point. The VR/AR walk takes over from here — until it exists,
- * this confirms the route was recorded and shows what was planned.
+ * Confirms the planned route, then hands off to a live ElevenLabs voice walk.
  */
 export default function DepartureCard({
   country,
   guide,
   stops,
+  localTime,
 }: {
   country: CountryInfo;
   guide: AgentIdentity;
   stops: DestinationId[];
+  localTime: LocalTime;
 }) {
   return (
     <div>
@@ -53,22 +56,12 @@ export default function DepartureCard({
         })}
       </ol>
 
-      <div className="mt-8 rounded-xl border border-white/10 bg-white/[0.03] p-5">
-        <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-zinc-500">
-          next
-        </p>
-        <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-          This is where the walk begins — {guide.name} moving between these
-          places, speaking with you as you go. That experience is still being
-          built.
-        </p>
-        <button
-          disabled
-          className="mt-5 w-full cursor-not-allowed rounded-full bg-white/5 px-4 py-2.5 text-center font-mono text-xs text-zinc-600"
-        >
-          enter the walk — coming soon
-        </button>
-      </div>
+      <WalkSession
+        country={country}
+        guide={guide}
+        stops={stops}
+        localTime={localTime}
+      />
 
       <Link
         href="/explore"
