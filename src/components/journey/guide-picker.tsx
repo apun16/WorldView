@@ -27,7 +27,12 @@ export default function GuidePicker({
             className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-4 py-3.5 transition-colors hover:border-sky-400/40 hover:bg-sky-400/10"
           >
             <div>
-              <div className="text-sm text-zinc-100">{guide.name}</div>
+              <div className="flex items-center gap-1.5 text-sm text-zinc-100">
+                <span className="font-mono text-xs text-zinc-500">
+                  {guide.gender === "female" ? "♀" : "♂"}
+                </span>
+                {guide.name}
+              </div>
               <div className="font-mono text-[11px] text-zinc-500">
                 {country.capital}
               </div>

@@ -313,8 +313,11 @@ function CountryView({
                 }`}
               >
                 <span
-                  className={`text-sm ${isSelected ? "text-zinc-50" : "text-zinc-300"}`}
+                  className={`flex items-center gap-1.5 text-sm ${isSelected ? "text-zinc-50" : "text-zinc-300"}`}
                 >
+                  <span className="font-mono text-xs text-zinc-500">
+                    {a.gender === "female" ? "♀" : "♂"}
+                  </span>
                   {a.name}
                 </span>
                 {isSelected && (
@@ -341,11 +344,11 @@ function CountryView({
                   .replace(/^Let's go to /i, "to ")
                   .toLowerCase()}
               </span>
-              , teaching you {activeLanguage} as you go.
+              , teaching you {activeLanguage} as you go. 
             </>
           ) : (
             <>
-              Pick a language and a place — a market, a kitchen, the capital
+                Pick a language and a place — a market, a kitchen, the capital
               {scenarios.some((s) => s.id === "attraction")
                 ? ", or a famous attraction"
                 : ""}{" "}

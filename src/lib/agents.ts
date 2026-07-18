@@ -1,38 +1,35 @@
 import type { CountryFeature } from "@/lib/geo-types";
-import { COUNTRY_AREAS_KM2 } from "@/lib/country-areas";
+import { getNamePoolForCountry, type CountryLike, type NamePool } from "@/lib/guide-names";
+
+export type Gender = "female" | "male";
 
 export type Agent = {
   id: string;
   name: string;
+  gender: Gender;
   iso2: string;
   lat: number;
   lng: number;
+  /** Multiplier on the base pin size, shrunk for small countries so the pin
+   * never renders wider than the landmass it's standing on. 1 = full size. */
+  sizeScale: number;
 };
 
-const FALLBACK_AGENTS = 3;
+const GUIDE_COUNT = 2;
 const MAX_SAMPLE_ATTEMPTS = 30;
 
-// Agent count by land area (km²), ascending. Explicit bands rather than a
-// normalized curve so the small end stays genuinely small: without this, the
-// median country drifts to the middle of the range and every country looks
-// roughly the same.
-const AREA_BANDS: Array<{ maxAreaKm2: number; agents: number }> = [
-  { maxAreaKm2: 100_000, agents: 2 },
-  { maxAreaKm2: 500_000, agents: 3 },
-  { maxAreaKm2: 2_000_000, agents: 4 },
-  { maxAreaKm2: 5_000_000, agents: 5 },
-  { maxAreaKm2: 10_000_000, agents: 6 },
-  { maxAreaKm2: Infinity, agents: 7 },
-];
-
-// Placeholder names until real character data exists. Deliberately not matched
-// to any country — that comes with the character system.
-const NAME_POOL = [
-  "Amara", "Rafael", "Yuki", "Nadia", "Tomas", "Leila", "Kwame", "Ingrid",
-  "Hassan", "Mei", "Sofia", "Dmitri", "Ayesha", "Lucas", "Priya", "Emeka",
-  "Elena", "Jun", "Fatima", "Andres", "Sanne", "Omar", "Keiko", "Marisol",
-  "Nikolai", "Zara", "Mateo", "Anouk", "Ravi", "Isolde",
-];
+// agent-marker.ts's MARKER_SIZE, in three-globe world units — the diameter a
+// sizeScale of 1 renders at. three-globe's sphere has radius 100, so 1 degree
+// of arc is (2π·100)/360 world units.
+const FULL_MARKER_WORLD_SIZE = 7.2;
+const WORLD_UNITS_PER_DEGREE = (2 * Math.PI * 100) / 360;
+// A pin should span at most this fraction of the landmass it stands on.
+const FIT_FRACTION = 0.35;
+// A floor in world units, not in sizeScale — clamping the *scale* to a floor
+// would still oversize genuinely tiny nations (Jamaica, Gambia...), since
+// their whole landmass is smaller than even a "small" fraction of the full
+// pin. Clamping the final rendered size instead lets those keep shrinking.
+const MIN_MARKER_WORLD_SIZE = 1.15;
 
 /** An agent positioned for rendering, lifted above its country's polygon cap. */
 export type AgentMarker = Agent & { altitude: number };
@@ -62,32 +59,37 @@ export function getCountryAgentMarkers(
 export type AgentIdentity = {
   id: string;
   name: string;
+  gender: Gender;
   iso2: string;
 };
 
 /**
  * Guide identities for a country. Only positions need the country's geometry,
  * so pages that just name a guide (the journey planner) can skip loading the
- * geojson entirely.
+ * geojson entirely — CountryLike (iso2/continent/languages) is enough to also
+ * pick a culturally-matched name pool.
  *
  * Shares the seeded sequence used by getCountryAgents — names are drawn before
  * any position sampling — so both functions always agree.
  */
-export function getAgentIdentities(iso2: string): AgentIdentity[] {
+export function getAgentIdentities(country: CountryLike): AgentIdentity[] {
+  const { iso2 } = country;
   const rand = mulberry32(hashString(iso2));
-  const count = agentCount(iso2);
-  return pickNames(count, rand).map((name, i) => ({
+  const count = agentCount();
+  const pool = getNamePoolForCountry(country);
+  return pickNames(count, rand, pool).map(({ name, gender }, i) => ({
     id: `${iso2}-${i}`,
     name,
+    gender,
     iso2,
   }));
 }
 
 export function findAgentIdentity(
-  iso2: string,
+  country: CountryLike,
   agentId: string
 ): AgentIdentity | null {
-  return getAgentIdentities(iso2).find((a) => a.id === agentId) ?? null;
+  return getAgentIdentities(country).find((a) => a.id === agentId) ?? null;
 }
 
 /**
@@ -100,18 +102,24 @@ export function getCountryAgents(country: CountryFeature): Agent[] {
   if (cached) return cached;
 
   const rand = mulberry32(hashString(iso2));
-  const count = agentCount(iso2);
-  const names = pickNames(count, rand);
+  const count = agentCount();
+  const pool = getNamePoolForCountry(country.properties);
+  const names = pickNames(count, rand, pool);
   const agents: Agent[] = [];
 
   for (let i = 0; i < count; i++) {
     const point = samplePointInCountry(country, rand);
+    const desiredWorldSize = point.extentDeg * WORLD_UNITS_PER_DEGREE * FIT_FRACTION;
+    const worldSize = clamp(desiredWorldSize, MIN_MARKER_WORLD_SIZE, FULL_MARKER_WORLD_SIZE);
+    const sizeScale = worldSize / FULL_MARKER_WORLD_SIZE;
     agents.push({
       id: `${iso2}-${i}`,
-      name: names[i],
+      name: names[i].name,
+      gender: names[i].gender,
       iso2,
       lat: point.lat,
       lng: point.lng,
+      sizeScale,
     });
   }
 
@@ -119,23 +127,23 @@ export function getCountryAgents(country: CountryFeature): Agent[] {
   return agents;
 }
 
-function agentCount(iso2: string): number {
-  const area = COUNTRY_AREAS_KM2[iso2];
-  if (!area) return FALLBACK_AGENTS;
-  return AREA_BANDS.find((band) => area <= band.maxAreaKm2)!.agents;
+function agentCount(): number {
+  return GUIDE_COUNT;
 }
 
-/** Draws `count` distinct names via partial Fisher-Yates, so no country
- *  ends up with two guides sharing a name. */
-function pickNames(count: number, rand: () => number): string[] {
-  const pool = [...NAME_POOL];
-  const picked: string[] = [];
-  for (let i = 0; i < count && pool.length > 0; i++) {
-    const index = Math.floor(rand() * pool.length);
-    picked.push(pool[index]);
-    pool.splice(index, 1);
-  }
-  return picked;
+/** Produces one female and one male guide name, drawn from a culturally-matched pool. */
+function pickNames(
+  count: number,
+  rand: () => number,
+  pool: NamePool
+): Array<{ name: string; gender: Gender }> {
+  if (count <= 0) return [];
+  const female = pool.female[Math.floor(rand() * pool.female.length)];
+  const male = pool.male[Math.floor(rand() * pool.male.length)];
+  return [
+    { name: female, gender: "female" as const },
+    { name: male, gender: "male" as const },
+  ].slice(0, count);
 }
 
 /**
@@ -145,14 +153,18 @@ function pickNames(count: number, rand: () => number): string[] {
  * weighted by ring size, rather than one box around the whole country. A
  * combined box is useless for countries that straddle the antimeridian (Fiji's
  * would span the globe) and wasteful for scattered archipelagos.
+ *
+ * Also returns extentDeg — the chosen ring's narrower bounding-box dimension —
+ * so the caller can shrink the marker to fit whichever landmass (island,
+ * mainland...) the point actually landed on, rather than the country overall.
  */
 function samplePointInCountry(
   country: CountryFeature,
   rand: () => number
-): { lat: number; lng: number } {
+): { lat: number; lng: number; extentDeg: number } {
   const rings = exteriorRings(country.geometry);
   if (rings.length === 0) {
-    return { lat: country.properties.lat, lng: country.properties.lng };
+    return { lat: country.properties.lat, lng: country.properties.lng, extentDeg: 1 };
   }
 
   const boxes = rings.map(boundingBox);
@@ -165,7 +177,7 @@ function samplePointInCountry(
     const lng = minLng + rand() * (maxLng - minLng);
     const lat = minLat + rand() * (maxLat - minLat);
     if (pointInRing(lng, lat, rings[index])) {
-      return { lat, lng };
+      return { lat, lng, extentDeg: ringExtentDeg(boxes[index]) };
     }
   }
 
@@ -173,7 +185,15 @@ function samplePointInCountry(
   // which is guaranteed to be on that country's coastline.
   const largest = weights.indexOf(Math.max(...weights));
   const [lng, lat] = rings[largest][0];
-  return { lat, lng };
+  return { lat, lng, extentDeg: ringExtentDeg(boxes[largest]) };
+}
+
+function ringExtentDeg([minLng, minLat, maxLng, maxLat]: [number, number, number, number]): number {
+  return Math.min(maxLng - minLng, maxLat - minLat);
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
 }
 
 function weightedIndex(

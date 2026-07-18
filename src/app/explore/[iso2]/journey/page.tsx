@@ -18,13 +18,13 @@ export default async function JourneyPage({
   const country = findCountry(iso2);
   if (!country) notFound();
 
-  const agent = guide ? findAgentIdentity(country.iso2, guide) : null;
+  const agent = guide ? findAgentIdentity(country, guide) : null;
 
   // An unknown or missing guide is a recoverable state, not an error — the
   // user can pick one here instead of being sent back to the globe.
   if (!agent) {
     return (
-      <GuidePicker country={country} guides={getAgentIdentities(country.iso2)} />
+      <GuidePicker country={country} guides={getAgentIdentities(country)} />
     );
   }
 

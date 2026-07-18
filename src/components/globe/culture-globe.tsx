@@ -250,7 +250,9 @@ export default function CultureGlobe() {
       return createAgentMarker(
         agent.id,
         isSelected ? palette.selected : palette.hover,
-        isSelected
+        isSelected,
+        agent.gender,
+        agent.sizeScale
       );
     },
     [palette, selectedAgent]
@@ -331,7 +333,10 @@ export default function CultureGlobe() {
         objectThreeObject={renderAgentMarker}
         onObjectClick={(d: object) => handleAgentSelect(d as AgentMarker)}
         onObjectHover={(d: object | null) => setHoveredAgent((d as AgentMarker) ?? null)}
-        objectLabel={() => ""}
+        objectLabel={(d: object) => {
+          const a = d as AgentMarker;
+          return `<div style="font-family: ui-monospace, monospace; font-size: 12px; padding: 4px 8px; background: rgba(5,7,13,0.9); border: 1px solid rgba(125,211,252,0.3); border-radius: 4px; color: #e0f2fe;">${a.name}</div>`;
+        }}
         arcLabel={(d: object) => {
           const a = d as { fromName: string; toName: string; label: string };
           return `<div style="max-width:220px; font-family: ui-monospace, monospace; font-size: 11px; line-height:1.4; padding: 6px 9px; background: rgba(5,7,13,0.92); border: 1px solid rgba(251,191,36,0.35); border-radius: 6px; color: #fde68a;">${a.fromName} → ${a.toName}<br/><span style="color:#fef3c7;">${a.label}</span></div>`;
