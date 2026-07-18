@@ -2,19 +2,23 @@ import Link from "next/link";
 import type { CountryInfo } from "@/lib/country-index";
 import type { AgentIdentity } from "@/lib/agents";
 import { findDestination, type DestinationId } from "@/lib/destinations";
+import { walkHref } from "@/lib/walk/walk-plan";
 
 /**
- * The handoff point. The VR/AR walk takes over from here — until it exists,
- * this confirms the route was recorded and shows what was planned.
+ * The handoff point into the walk. Confirms the recorded route, then hands off
+ * to /explore/[iso2]/walk.
  */
 export default function DepartureCard({
   country,
   guide,
   stops,
+  language,
 }: {
   country: CountryInfo;
   guide: AgentIdentity;
   stops: DestinationId[];
+  /** Which language the guide should teach; null falls back on the walk route. */
+  language?: string | null;
 }) {
   return (
     <div>
@@ -58,16 +62,15 @@ export default function DepartureCard({
           next
         </p>
         <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-          This is where the walk begins — {guide.name} moving between these
-          places, speaking with you as you go. That experience is still being
-          built.
+          {guide.name} will meet you at the first stop and move between these
+          places with you, teaching you words as you go.
         </p>
-        <button
-          disabled
-          className="mt-5 w-full cursor-not-allowed rounded-full bg-white/5 px-4 py-2.5 text-center font-mono text-xs text-zinc-600"
+        <Link
+          href={walkHref(country.iso2, guide.id, stops, language)}
+          className="mt-5 block w-full rounded-full bg-sky-400/90 px-4 py-2.5 text-center font-mono text-xs text-[#05070d] transition-colors hover:bg-sky-300"
         >
-          enter the walk — coming soon
-        </button>
+          enter the walk →
+        </Link>
       </div>
 
       <Link

@@ -10,10 +10,10 @@ export default async function JourneyPage({
   searchParams,
 }: {
   params: Promise<{ iso2: string }>;
-  searchParams: Promise<{ guide?: string }>;
+  searchParams: Promise<{ guide?: string; lang?: string }>;
 }) {
   const { iso2 } = await params;
-  const { guide } = await searchParams;
+  const { guide, lang } = await searchParams;
 
   const country = findCountry(iso2);
   if (!country) notFound();
@@ -33,6 +33,7 @@ export default async function JourneyPage({
       country={country}
       guide={agent}
       localTime={localTimeFromLongitude(country.lng)}
+      language={lang ?? null}
     />
   );
 }

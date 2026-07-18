@@ -333,32 +333,25 @@ function CountryView({
 
       <div className="mt-8 rounded-xl border border-white/10 bg-white/[0.03] p-4">
         <p className="text-xs leading-relaxed text-zinc-400">
-          {agent
-            ? `${agent.name} will walk you through a market, a home, and the street — teaching you words as you go.`
-            : `A local guide in ${p.capital} will walk you through a market, a home, and the street — teaching you words as you go.`}
-          {activeLanguage && activeScenario ? (
+          {activeLanguage ? (
             <>
-              A local guide will meet you in {p.capital} and take you{" "}
-              <span className="text-zinc-200">
-                {scenarios.find((s) => s.id === activeScenario)?.label
-                  .replace(/^Let's go to /i, "to ")
-                  .toLowerCase()}
-              </span>
-              , teaching you {activeLanguage} as you go. 
+              {agent ? agent.name : "A local guide"} will meet you in {p.capital}{" "}
+              and walk you through a few places, teaching you{" "}
+              <span className="text-zinc-200">{activeLanguage}</span> as you go.
             </>
           ) : (
             <>
-                Pick a language and a place — a market, a kitchen, the capital
-              {scenarios.some((s) => s.id === "attraction")
-                ? ", or a famous attraction"
-                : ""}{" "}
-              — and a local guide will teach you words as you go.
+              {agent ? agent.name : `A local guide in ${p.capital}`} will walk you
+              through a market, a home, and the street — teaching you words as you
+              go. Pick a language above to choose what they teach.
             </>
           )}
         </p>
         {agent ? (
           <Link
-            href={`/explore/${p.iso2}/journey?guide=${agent.id}`}
+            href={`/explore/${p.iso2}/journey?guide=${agent.id}${
+              activeLanguage ? `&lang=${encodeURIComponent(activeLanguage)}` : ""
+            }`}
             className="mt-4 block w-full rounded-full bg-sky-400/90 px-4 py-2.5 text-center font-mono text-xs text-[#05070d] transition-colors hover:bg-sky-300"
           >
             plan your walk with {agent.name} →
