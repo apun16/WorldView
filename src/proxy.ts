@@ -1,18 +1,18 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { SESSION_COOKIE_NAME } from "@/lib/session";
+import { auth0 } from "@/lib/auth0";
 
-export function proxy(request: NextRequest) {
-  const hasSession = request.cookies.has(SESSION_COOKIE_NAME);
+export async function proxy(request: NextRequest) {
+  const session = await auth0.getSession(request);
 
-  if (!hasSession) {
-    const loginUrl = new URL("/login", request.url);
+  if (request.nextUrl.pathname.startsWith("/explore") && !session) {
+    const loginUrl = new URL("/auth/login?returnTo=/explore", request.url);
     return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next();
+  return await auth0.middleware(request);
 }
 
 export const config = {
-  matcher: ["/explore/:path*"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)"],
 };
