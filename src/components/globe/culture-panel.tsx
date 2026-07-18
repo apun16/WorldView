@@ -2,11 +2,13 @@
 
 import { useMemo } from "react";
 import type { CountryFeature } from "@/lib/geo-types";
+import type { Agent } from "@/lib/agents";
 import type { PanelView } from "@/components/globe/culture-globe";
 
 export default function CulturePanel({
   panel,
   countries,
+  selectedAgent,
   onSelectContinent,
   onSelectLanguage,
   onSelectCountryFromList,
@@ -14,6 +16,7 @@ export default function CulturePanel({
 }: {
   panel: PanelView;
   countries: CountryFeature[];
+  selectedAgent: Agent | null;
   onSelectContinent: (continent: string) => void;
   onSelectLanguage: (continent: string, language: string) => void;
   onSelectCountryFromList: (feat: object) => void;
@@ -54,6 +57,7 @@ export default function CulturePanel({
           {panel.kind === "country" && (
             <CountryView
               country={panel.country}
+              selectedAgent={selectedAgent}
               onSelectContinent={onSelectContinent}
               onSelectLanguage={onSelectLanguage}
             />
@@ -124,14 +128,17 @@ export default function CulturePanel({
 
 function CountryView({
   country,
+  selectedAgent,
   onSelectContinent,
   onSelectLanguage,
 }: {
   country: CountryFeature;
+  selectedAgent: Agent | null;
   onSelectContinent: (continent: string) => void;
   onSelectLanguage: (continent: string, language: string) => void;
 }) {
   const p = country.properties;
+  const agent = selectedAgent?.iso2 === p.iso2 ? selectedAgent : null;
   return (
     <div>
       <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-sky-300/70">
@@ -167,10 +174,23 @@ function CountryView({
         see every language in {p.continent} →
       </button>
 
+      {agent && (
+        <div className="mt-8 rounded-xl border border-fuchsia-400/25 bg-fuchsia-400/[0.07] p-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-fuchsia-300/70">
+            selected guide
+          </p>
+          <p className="mt-2 font-serif text-xl text-zinc-50">{agent.name}</p>
+          <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+            A guide in {p.capital}. Coming soon: walk through the market together.
+          </p>
+        </div>
+      )}
+
       <div className="mt-8 rounded-xl border border-white/10 bg-white/[0.03] p-4">
         <p className="text-xs leading-relaxed text-zinc-400">
-          A local guide in {p.capital} will walk you through a market, a home, and
-          the street — teaching you words as you go.
+          {agent
+            ? `${agent.name} will walk you through a market, a home, and the street — teaching you words as you go.`
+            : `A local guide in ${p.capital} will walk you through a market, a home, and the street — teaching you words as you go.`}
         </p>
         <button
           disabled
