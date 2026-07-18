@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { CountryFeature } from "@/lib/geo-types";
+import type { Agent } from "@/lib/agents";
 import type { PanelView } from "@/components/globe/culture-globe";
 import {
   getScenarioOptions,
@@ -12,6 +14,9 @@ import {
 export default function CulturePanel({
   panel,
   countries,
+  agents,
+  selectedAgent,
+  onSelectAgent,
   onSelectContinent,
   onSelectLanguage,
   onSelectCountryFromList,
@@ -19,6 +24,9 @@ export default function CulturePanel({
 }: {
   panel: PanelView;
   countries: CountryFeature[];
+  agents: Agent[];
+  selectedAgent: Agent | null;
+  onSelectAgent: (agent: Agent) => void;
   onSelectContinent: (continent: string) => void;
   onSelectLanguage: (continent: string, language: string) => void;
   onSelectCountryFromList: (feat: object) => void;
@@ -60,6 +68,9 @@ export default function CulturePanel({
             <CountryView
               key={panel.country.properties.iso2}
               country={panel.country}
+              agents={agents}
+              selectedAgent={selectedAgent}
+              onSelectAgent={onSelectAgent}
               onSelectContinent={onSelectContinent}
               onSelectLanguage={onSelectLanguage}
             />
@@ -151,14 +162,21 @@ export default function CulturePanel({
 
 function CountryView({
   country,
+  agents,
+  selectedAgent,
+  onSelectAgent,
   onSelectContinent,
   onSelectLanguage,
 }: {
   country: CountryFeature;
+  agents: Agent[];
+  selectedAgent: Agent | null;
+  onSelectAgent: (agent: Agent) => void;
   onSelectContinent: (continent: string) => void;
   onSelectLanguage: (continent: string, language: string) => void;
 }) {
   const p = country.properties;
+  const agent = selectedAgent?.iso2 === p.iso2 ? selectedAgent : null;
   const [activeLanguage, setActiveLanguage] = useState<string | null>(
     () => p.languages.find(isLanguageSupported) ?? null
   );
@@ -274,8 +292,47 @@ function CountryView({
         see every language in {p.continent} →
       </button>
 
+      <div className="mt-8">
+        <div className="flex items-baseline justify-between">
+          <p className="font-mono text-xs text-zinc-500">guides you could meet</p>
+          <p className="font-mono text-[11px] text-zinc-600">{agents.length}</p>
+        </div>
+
+        <div className="mt-2 flex flex-col gap-1.5">
+          {agents.map((a) => {
+            const isSelected = a.id === agent?.id;
+            return (
+              <button
+                key={a.id}
+                onClick={() => onSelectAgent(a)}
+                aria-pressed={isSelected}
+                className={`flex items-center justify-between rounded-lg border px-3.5 py-2.5 text-left transition-colors ${
+                  isSelected
+                    ? "border-fuchsia-400/40 bg-fuchsia-400/10"
+                    : "border-white/10 bg-white/[0.03] hover:border-sky-400/30 hover:bg-sky-400/[0.07]"
+                }`}
+              >
+                <span
+                  className={`text-sm ${isSelected ? "text-zinc-50" : "text-zinc-300"}`}
+                >
+                  {a.name}
+                </span>
+                {isSelected && (
+                  <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-fuchsia-300/70">
+                    selected
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="mt-8 rounded-xl border border-white/10 bg-white/[0.03] p-4">
         <p className="text-xs leading-relaxed text-zinc-400">
+          {agent
+            ? `${agent.name} will walk you through a market, a home, and the street — teaching you words as you go.`
+            : `A local guide in ${p.capital} will walk you through a market, a home, and the street — teaching you words as you go.`}
           {activeLanguage && activeScenario ? (
             <>
               A local guide will meet you in {p.capital} and take you{" "}
@@ -296,12 +353,18 @@ function CountryView({
             </>
           )}
         </p>
-        <button
-          disabled
-          className="mt-4 w-full cursor-not-allowed rounded-full bg-sky-400/20 px-4 py-2.5 text-center font-mono text-xs text-sky-300/60"
-        >
-          begin the walk — coming soon
-        </button>
+        {agent ? (
+          <Link
+            href={`/explore/${p.iso2}/journey?guide=${agent.id}`}
+            className="mt-4 block w-full rounded-full bg-sky-400/90 px-4 py-2.5 text-center font-mono text-xs text-[#05070d] transition-colors hover:bg-sky-300"
+          >
+            plan your walk with {agent.name} →
+          </Link>
+        ) : (
+          <p className="mt-4 text-center font-mono text-[11px] text-zinc-500">
+            pick a guide on the map to begin
+          </p>
+        )}
       </div>
     </div>
   );
