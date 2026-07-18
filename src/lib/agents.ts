@@ -58,6 +58,38 @@ export function getCountryAgentMarkers(
   return markers;
 }
 
+/** Who a country's guides are, independent of where they stand. */
+export type AgentIdentity = {
+  id: string;
+  name: string;
+  iso2: string;
+};
+
+/**
+ * Guide identities for a country. Only positions need the country's geometry,
+ * so pages that just name a guide (the journey planner) can skip loading the
+ * geojson entirely.
+ *
+ * Shares the seeded sequence used by getCountryAgents — names are drawn before
+ * any position sampling — so both functions always agree.
+ */
+export function getAgentIdentities(iso2: string): AgentIdentity[] {
+  const rand = mulberry32(hashString(iso2));
+  const count = agentCount(iso2);
+  return pickNames(count, rand).map((name, i) => ({
+    id: `${iso2}-${i}`,
+    name,
+    iso2,
+  }));
+}
+
+export function findAgentIdentity(
+  iso2: string,
+  agentId: string
+): AgentIdentity | null {
+  return getAgentIdentities(iso2).find((a) => a.id === agentId) ?? null;
+}
+
 /**
  * Deterministic agents for a country: the same iso2 always yields the same
  * count, names, and positions, so pins do not reshuffle between renders.

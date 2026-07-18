@@ -13,6 +13,7 @@ import PaletteSlider from "@/components/globe/palette-slider";
 import CountrySearch from "@/components/globe/country-search";
 import {
   getCountryAgentMarkers,
+  getCountryAgents,
   type Agent,
   type AgentMarker,
 } from "@/lib/agents";
@@ -138,16 +139,27 @@ export default function CultureGlobe() {
     globeRef.current?.pointOfView({ lat, lng, altitude }, 1400);
   }, []);
 
-  const handleCountryClick = useCallback(
-    (feat: object) => {
-      const country = feat as CountryFeature;
+  /**
+   * Opens a country. `agent` is the guide the user picked explicitly; without
+   * one, the country's first guide is selected so the panel always has someone
+   * to walk with. An existing selection in the same country is kept.
+   */
+  const selectCountry = useCallback(
+    (country: CountryFeature, agent?: Agent) => {
       setPanel({ kind: "country", country });
-      setSelectedAgent((current) =>
-        current && current.iso2 === country.properties.iso2 ? current : null
-      );
+      setSelectedAgent((current) => {
+        if (agent) return agent;
+        if (current && current.iso2 === country.properties.iso2) return current;
+        return getCountryAgents(country)[0] ?? null;
+      });
       flyTo(country.properties.lat, country.properties.lng, 1.3);
     },
     [flyTo]
+  );
+
+  const handleCountryClick = useCallback(
+    (feat: object) => selectCountry(feat as CountryFeature),
+    [selectCountry]
   );
 
   const openContinentLanguages = useCallback((continent: string) => {
@@ -187,14 +199,20 @@ export default function CultureGlobe() {
 
   const handleAgentSelect = useCallback(
     (agent: Agent) => {
-      setSelectedAgent(agent);
+      // Already looking at this country: just switch guide, no camera move.
       if (panel.kind === "country" && panel.country.properties.iso2 === agent.iso2) {
+        setSelectedAgent(agent);
         return;
       }
       const country = countries.find((c) => c.properties.iso2 === agent.iso2);
-      if (country) handleCountryClick(country);
+      if (country) selectCountry(country, agent);
     },
-    [panel, countries, handleCountryClick]
+    [panel, countries, selectCountry]
+  );
+
+  const panelAgents = useMemo(
+    () => (panel.kind === "country" ? getCountryAgents(panel.country) : []),
+    [panel]
   );
 
   const agentColor = useCallback(
@@ -314,7 +332,9 @@ export default function CultureGlobe() {
       <CulturePanel
         panel={panel}
         countries={countries}
+        agents={panelAgents}
         selectedAgent={selectedAgent}
+        onSelectAgent={handleAgentSelect}
         onSelectContinent={openContinentLanguages}
         onSelectLanguage={openLanguage}
         onSelectCountryFromList={handleCountryClick}
