@@ -4,13 +4,21 @@ import { useCallback, useState } from "react";
 import {
   ConversationProvider,
   useConversation,
+  useConversationClientTool,
 } from "@elevenlabs/react";
 import type { CountryInfo } from "@/lib/country-index";
 import type { AgentIdentity } from "@/lib/agents";
-import type { DestinationId } from "@/lib/destinations";
+import {
+  findDestination,
+  type DestinationId,
+} from "@/lib/destinations";
 import type { LocalTime } from "@/lib/local-time";
 import { pickWalkLanguage } from "@/lib/elevenlabs-language";
-import { buildWalkDynamicVariables } from "@/lib/walk-variables";
+import {
+  buildWalkDynamicVariables,
+  locationPhrase,
+  resolveSceneId,
+} from "@/lib/walk-variables";
 
 type WalkSessionProps = {
   country: CountryInfo;
@@ -38,6 +46,7 @@ function WalkSessionInner({
   const conversation = useConversation();
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
+  const [activeStop, setActiveStop] = useState<DestinationId>(stops[0]);
   const [lines, setLines] = useState<Array<{ role: string; text: string }>>(
     []
   );
@@ -46,6 +55,20 @@ function WalkSessionInner({
   const connected = conversation.status === "connected";
   const connecting =
     conversation.status === "connecting" || starting;
+
+  // Agent calls this when narrating a move to the next stop.
+  useConversationClientTool(
+    "show_scene",
+    (parameters: { scene_id?: string; location?: string }) => {
+      const raw = parameters.scene_id ?? parameters.location ?? "";
+      const next = resolveSceneId(raw, stops);
+      if (next) {
+        setActiveStop(next);
+        return `Now at ${locationPhrase(next)}`;
+      }
+      return `Unknown scene "${raw}" — staying put`;
+    }
+  );
 
   const appendLine = useCallback((role: string, text: string) => {
     const trimmed = text.trim();
@@ -60,6 +83,8 @@ function WalkSessionInner({
   const startWalk = async () => {
     setError(null);
     setStarting(true);
+    setActiveStop(stops[0]);
+    setLines([]);
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true });
 
@@ -84,8 +109,6 @@ function WalkSessionInner({
         localTime,
       });
 
-      // Let the ElevenLabs agent prompt/first message use {{vars}}.
-      // Avoid prompt overrides so dashboard templates keep working.
       conversation.startSession({
         signedUrl,
         connectionType: "websocket",
@@ -115,14 +138,37 @@ function WalkSessionInner({
         voice walk · {language.displayName}
       </p>
       <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-        {guide.name} will speak with you as you walk. Allow the microphone when
-        prompted.
-        {!language.supported && (
-          <span className="mt-1 block text-amber-200/70">
-            This language is still rolling out — the guide may lean on English.
-          </span>
-        )}
+        {guide.name} will walk you through{" "}
+        <span className="text-zinc-300">
+          {stops.map(locationPhrase).join(" → ")}
+        </span>
+        . Allow the microphone when prompted.
       </p>
+
+      {connected && (
+        <ol className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-2">
+          {stops.map((id, index) => {
+            const dest = findDestination(id);
+            const here = id === activeStop;
+            return (
+              <li key={id} className="flex items-center gap-2">
+                <span
+                  className={`rounded-full px-3 py-1 font-mono text-[11px] ${
+                    here
+                      ? "bg-sky-400/20 text-sky-100"
+                      : "bg-white/5 text-zinc-500"
+                  }`}
+                >
+                  {dest?.label ?? id}
+                </span>
+                {index < stops.length - 1 && (
+                  <span className="text-zinc-700">→</span>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      )}
 
       {error && (
         <p className="mt-3 font-mono text-xs text-rose-300/90">{error}</p>
@@ -161,6 +207,8 @@ function WalkSessionInner({
 
       {connected && (
         <p className="mt-4 font-mono text-[11px] text-zinc-500">
+          now at {locationPhrase(activeStop)}
+          {" · "}
           {conversation.isSpeaking
             ? `${guide.name} is speaking…`
             : conversation.isListening
