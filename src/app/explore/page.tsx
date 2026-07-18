@@ -1,9 +1,10 @@
 import CultureGlobe from "@/components/globe/culture-globe";
-import { getSession } from "@/lib/session";
-import { mockLogout } from "@/lib/auth-actions";
+import { auth0 } from "@/lib/auth0";
+import { logoutWithAuth0 } from "@/lib/auth-actions";
 
 export default async function ExplorePage() {
-  const session = await getSession();
+  const session = await auth0.getSession();
+  const userName = session?.user?.name || session?.user?.email || "Explorer";
 
   return (
     <main className="relative h-screen w-full overflow-hidden bg-[#05070d]">
@@ -14,10 +15,10 @@ export default async function ExplorePage() {
 
       {session && (
         <form
-          action={mockLogout}
+          action={logoutWithAuth0}
           className="absolute right-6 top-6 z-10 flex items-center gap-3 font-mono text-xs text-zinc-400 sm:right-10 sm:top-8"
         >
-          <span>{session.name}</span>
+          <span>{userName}</span>
           <button type="submit" className="text-zinc-500 hover:text-zinc-300">
             log out
           </button>

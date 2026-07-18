@@ -43,9 +43,6 @@ export default function ConnectionTicker({ connections }: { connections: Arc[] }
         visible ? "opacity-100" : "opacity-0"
       }`}
     >
-      <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-amber-300/70">
-        semantic connection
-      </p>
       <p className="mt-1.5 font-mono text-xs leading-relaxed text-amber-100/90">
         <span className="text-amber-300">
           {arc.fromName} → {arc.toName}
