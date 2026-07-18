@@ -1,0 +1,98 @@
+"use client";
+
+import { useMemo, useRef, useState } from "react";
+import type { CountryFeature } from "@/lib/geo-types";
+
+export default function CountrySearch({
+  countries,
+  onSelect,
+}: {
+  countries: CountryFeature[];
+  onSelect: (country: CountryFeature) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const [highlight, setHighlight] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const matches = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return countries
+      .filter((c) => c.properties.name.toLowerCase().includes(q))
+      .sort((a, b) => {
+        const an = a.properties.name.toLowerCase();
+        const bn = b.properties.name.toLowerCase();
+        const aStarts = an.startsWith(q) ? 0 : 1;
+        const bStarts = bn.startsWith(q) ? 0 : 1;
+        if (aStarts !== bStarts) return aStarts - bStarts;
+        return an.localeCompare(bn);
+      })
+      .slice(0, 8);
+  }, [countries, query]);
+
+  const pick = (country: CountryFeature) => {
+    onSelect(country);
+    setQuery(country.properties.name);
+    setOpen(false);
+    inputRef.current?.blur();
+  };
+
+  return (
+    <div className="absolute bottom-5 right-5 z-10 w-56 sm:w-64">
+      <div className="relative">
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          placeholder="Search a country…"
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+            setHighlight(0);
+          }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 120)}
+          onKeyDown={(e) => {
+            if (!matches.length) return;
+            if (e.key === "ArrowDown") {
+              e.preventDefault();
+              setHighlight((h) => Math.min(h + 1, matches.length - 1));
+            } else if (e.key === "ArrowUp") {
+              e.preventDefault();
+              setHighlight((h) => Math.max(h - 1, 0));
+            } else if (e.key === "Enter") {
+              e.preventDefault();
+              pick(matches[highlight]);
+            } else if (e.key === "Escape") {
+              setOpen(false);
+              inputRef.current?.blur();
+            }
+          }}
+          className="w-full rounded-full border border-white/15 bg-[#070a14]/85 px-4 py-2 font-mono text-xs text-zinc-100 placeholder:text-zinc-500 backdrop-blur-md outline-none focus:border-white/30"
+        />
+
+        {open && matches.length > 0 && (
+          <ul className="absolute bottom-full right-0 mb-2 max-h-64 w-full overflow-y-auto rounded-lg border border-white/10 bg-[#070a14]/95 py-1 backdrop-blur-md">
+            {matches.map((c, i) => (
+              <li key={c.properties.iso2}>
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => pick(c)}
+                  className={`block w-full truncate px-3 py-1.5 text-left font-mono text-xs ${
+                    i === highlight
+                      ? "bg-white/10 text-zinc-100"
+                      : "text-zinc-300 hover:bg-white/5"
+                  }`}
+                >
+                  {c.properties.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -10,6 +10,7 @@ import CulturePanel from "@/components/globe/culture-panel";
 import ConnectionTicker from "@/components/globe/connection-ticker";
 import { GLOBE_PALETTES } from "@/lib/globe-palettes";
 import PaletteSlider from "@/components/globe/palette-slider";
+import CountrySearch from "@/components/globe/country-search";
 
 const Globe = dynamic(() => import("react-globe.gl"), { ssr: false });
 
@@ -211,6 +212,8 @@ export default function CultureGlobe() {
         index={paletteIndex}
         onChange={setPaletteIndex}
       />
+
+      <CountrySearch countries={countries} onSelect={handleCountryClick} />
 
       <CulturePanel
         panel={panel}
