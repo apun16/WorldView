@@ -8,14 +8,10 @@ import type { CountryCollection, CountryFeature } from "@/lib/geo-types";
 import { SEMANTIC_CONNECTIONS } from "@/lib/geo-types";
 import CulturePanel from "@/components/globe/culture-panel";
 import ConnectionTicker from "@/components/globe/connection-ticker";
+import { GLOBE_PALETTES } from "@/lib/globe-palettes";
+import PaletteSlider from "@/components/globe/palette-slider";
 
 const Globe = dynamic(() => import("react-globe.gl"), { ssr: false });
-
-const BASE_COLOR = "rgba(56, 189, 248, 0.12)";
-const HOVER_COLOR = "rgba(125, 211, 252, 0.85)";
-const SELECTED_COLOR = "rgba(56, 189, 248, 0.75)";
-const LANGUAGE_MATCH_COLOR = "rgba(251, 191, 36, 0.7)";
-const STROKE_COLOR = "rgba(148, 213, 251, 0.35)";
 
 export type PanelView =
   | { kind: "idle" }
@@ -35,6 +31,8 @@ export default function CultureGlobe() {
   const [countries, setCountries] = useState<CountryFeature[]>([]);
   const [hovered, setHovered] = useState<CountryFeature | null>(null);
   const [panel, setPanel] = useState<PanelView>({ kind: "idle" });
+  const [paletteIndex, setPaletteIndex] = useState(2);
+  const palette = GLOBE_PALETTES[paletteIndex];
 
   useEffect(() => {
     fetch("/data/countries-enriched.geojson")
@@ -62,13 +60,19 @@ export default function CultureGlobe() {
     globeRef.current?.pointOfView({ altitude: 2.2 }, 0);
   }, []);
 
+  useEffect(() => {
+    const controls = globeRef.current?.controls();
+    if (!controls) return;
+    controls.autoRotate = panel.kind === "idle";
+  }, [panel]);
+
   const globeMaterial = useMemo(() => {
     return new THREE.MeshPhongMaterial({
-      color: new THREE.Color("#0a1224"),
-      emissive: new THREE.Color("#04070f"),
+      color: new THREE.Color(palette.globeColor),
+      emissive: new THREE.Color(palette.globeEmissive),
       shininess: 4,
     });
-  }, []);
+  }, [palette]);
 
   const selectedIso2 =
     panel.kind === "country" ? panel.country.properties.iso2 : null;
@@ -79,17 +83,17 @@ export default function CultureGlobe() {
   const capColor = useCallback(
     (feat: object) => {
       const f = feat as CountryFeature;
-      if (hovered && f.properties.iso2 === hovered.properties.iso2) return HOVER_COLOR;
-      if (f.properties.iso2 === selectedIso2) return SELECTED_COLOR;
+      if (hovered && f.properties.iso2 === hovered.properties.iso2) return palette.hover;
+      if (f.properties.iso2 === selectedIso2) return palette.selected;
       if (activeLanguage && f.properties.languages.includes(activeLanguage)) {
-        return LANGUAGE_MATCH_COLOR;
+        return palette.languageMatch;
       }
       if (activeContinent && f.properties.continent === activeContinent) {
-        return "rgba(56, 189, 248, 0.28)";
+        return palette.continentGlow;
       }
-      return BASE_COLOR;
+      return palette.base;
     },
-    [hovered, selectedIso2, activeLanguage, activeContinent]
+    [hovered, selectedIso2, activeLanguage, activeContinent, palette]
   );
 
   const altitude = useCallback(
@@ -171,13 +175,13 @@ export default function CultureGlobe() {
         backgroundColor="rgba(0,0,0,0)"
         globeMaterial={globeMaterial}
         showAtmosphere
-        atmosphereColor="#38bdf8"
+        atmosphereColor={palette.atmosphere}
         atmosphereAltitude={0.18}
         onGlobeReady={handleGlobeReady}
         polygonsData={countries}
         polygonCapColor={capColor}
-        polygonSideColor={() => "rgba(8, 14, 28, 0.55)"}
-        polygonStrokeColor={() => STROKE_COLOR}
+        polygonSideColor={() => palette.side}
+        polygonStrokeColor={() => palette.stroke}
         polygonAltitude={altitude}
         polygonsTransitionDuration={250}
         polygonLabel={(feat: object) => {
@@ -201,6 +205,12 @@ export default function CultureGlobe() {
       />
 
       <ConnectionTicker connections={arcsData} />
+
+      <PaletteSlider
+        palettes={GLOBE_PALETTES}
+        index={paletteIndex}
+        onChange={setPaletteIndex}
+      />
 
       <CulturePanel
         panel={panel}
