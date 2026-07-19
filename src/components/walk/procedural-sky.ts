@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { DestinationId } from "@/lib/destinations";
 import { scenePalette, type ScenePalette } from "@/lib/walk/scene-palette";
 import { seededRandom } from "@/lib/seeded-random";
-import { withAlpha } from "@/lib/color";
+import { withAlpha, mixHex } from "@/lib/color";
 
 // The zero-asset environment. Every country walks on this; real photospheres
 // are an enhancement that fades in over the top. It follows agent-marker.ts's
@@ -12,6 +12,15 @@ const WIDTH = 2048;
 const HEIGHT = 1024;
 const HORIZON_Y = HEIGHT * 0.5;
 const MAX_CACHED = 24;
+
+// A home and a classroom are rooms, not views. Drawing them with a sky and a
+// horizon reads as standing outdoors looking at a building, which is the wrong
+// place entirely.
+const INTERIORS = new Set<DestinationId>(["home", "school"]);
+
+// Where the walls meet ceiling and floor, as a fraction of image height.
+const CEILING_Y = HEIGHT * 0.3;
+const FLOOR_Y = HEIGHT * 0.72;
 
 const cache = new Map<string, THREE.CanvasTexture>();
 
@@ -29,11 +38,15 @@ export function proceduralSky(
   canvas.height = HEIGHT;
   const ctx = canvas.getContext("2d")!;
 
-  drawSky(ctx, palette);
-  drawSun(ctx, palette);
-  drawGround(ctx, palette);
-  drawSkyline(ctx, palette, iso2, destination);
-  drawHaze(ctx, palette);
+  if (INTERIORS.has(destination)) {
+    drawInterior(ctx, palette, iso2, destination);
+  } else {
+    drawSky(ctx, palette);
+    drawSun(ctx, palette);
+    drawGround(ctx, palette);
+    drawSkyline(ctx, palette, iso2, destination);
+    drawHaze(ctx, palette);
+  }
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -237,4 +250,137 @@ function shade(hex: string, factor: number): string {
   const g = clamp(((n >> 8) & 255) * factor);
   const b = clamp((n & 255) * factor);
   return `rgb(${r}, ${g}, ${b})`;
+}
+
+
+/**
+ * A stylised room. Equirectangular bands map cleanly onto a room's parts: the
+ * top of the image is the ceiling above you, the middle band is the walls all
+ * around, and the bottom is the floor at your feet.
+ */
+function drawInterior(
+  ctx: CanvasRenderingContext2D,
+  palette: ScenePalette,
+  iso2: string,
+  destination: DestinationId
+) {
+  const rand = seededRandom(iso2, destination, "interior");
+  const wall = mixHex(palette.ground, "#f2ede3", 0.55);
+  const trim = mixHex(palette.silhouette, wall, 0.45);
+
+  // Ceiling, brightest near the centre where a light would sit.
+  const ceiling = ctx.createLinearGradient(0, 0, 0, CEILING_Y);
+  ceiling.addColorStop(0, mixHex(wall, "#ffffff", 0.28));
+  ceiling.addColorStop(1, wall);
+  ctx.fillStyle = ceiling;
+  ctx.fillRect(0, 0, WIDTH, CEILING_Y);
+
+  // Walls.
+  ctx.fillStyle = wall;
+  ctx.fillRect(0, CEILING_Y, WIDTH, FLOOR_Y - CEILING_Y);
+
+  // Floor, darkening toward the nadir so the pole reads as ground in shadow.
+  const floor = ctx.createLinearGradient(0, FLOOR_Y, 0, HEIGHT);
+  floor.addColorStop(0, mixHex(palette.ground, "#000000", 0.15));
+  floor.addColorStop(1, mixHex(palette.ground, "#000000", 0.55));
+  ctx.fillStyle = floor;
+  ctx.fillRect(0, FLOOR_Y, WIDTH, HEIGHT - FLOOR_Y);
+
+  // Skirting, which is what makes the floor/wall join read as a room edge.
+  ctx.fillStyle = trim;
+  ctx.fillRect(0, FLOOR_Y - HEIGHT * 0.012, WIDTH, HEIGHT * 0.012);
+
+  // Four walls at even intervals; each gets one feature. Drawn across three
+  // offsets so the wrap behind the viewer stays continuous.
+  const features = Array.from({ length: 4 }, () => rand());
+  for (const offset of [-WIDTH, 0, WIDTH]) {
+    for (let i = 0; i < 4; i++) {
+      const cx = offset + WIDTH * (i / 4 + 0.125);
+      if (cx < -WIDTH * 0.2 || cx > WIDTH * 1.2) continue;
+      const pick = features[i];
+
+      if (destination === "school") {
+        if (pick < 0.4) drawBlackboard(ctx, cx, trim, palette);
+        else if (pick < 0.75) drawWindow(ctx, cx, palette);
+        else drawDoor(ctx, cx, trim);
+      } else {
+        if (pick < 0.45) drawWindow(ctx, cx, palette);
+        else if (pick < 0.75) drawShelf(ctx, cx, trim);
+        else drawDoor(ctx, cx, trim);
+      }
+    }
+  }
+}
+
+function drawWindow(ctx: CanvasRenderingContext2D, cx: number, palette: ScenePalette) {
+  const w = WIDTH * 0.11;
+  const h = (FLOOR_Y - CEILING_Y) * 0.52;
+  const y = CEILING_Y + (FLOOR_Y - CEILING_Y) * 0.16;
+
+  // Daylight outside is what stops a room reading as a sealed box.
+  const glow = ctx.createLinearGradient(0, y, 0, y + h);
+  glow.addColorStop(0, palette.horizon);
+  glow.addColorStop(1, mixHex(palette.horizon, "#ffffff", 0.35));
+  ctx.fillStyle = glow;
+  ctx.fillRect(cx - w / 2, y, w, h);
+
+  ctx.strokeStyle = palette.silhouette;
+  ctx.lineWidth = 5;
+  ctx.strokeRect(cx - w / 2, y, w, h);
+  ctx.beginPath();
+  ctx.moveTo(cx, y);
+  ctx.lineTo(cx, y + h);
+  ctx.stroke();
+}
+
+function drawBlackboard(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  trim: string,
+  palette: ScenePalette
+) {
+  const w = WIDTH * 0.16;
+  const h = (FLOOR_Y - CEILING_Y) * 0.46;
+  const y = CEILING_Y + (FLOOR_Y - CEILING_Y) * 0.2;
+  ctx.fillStyle = mixHex(palette.silhouette, "#1d3b2a", 0.5);
+  ctx.fillRect(cx - w / 2, y, w, h);
+  ctx.strokeStyle = trim;
+  ctx.lineWidth = 7;
+  ctx.strokeRect(cx - w / 2, y, w, h);
+
+  // Faint chalk marks, so it reads as used rather than a blank rectangle.
+  ctx.strokeStyle = "rgba(255,255,255,0.25)";
+  ctx.lineWidth = 3;
+  for (let i = 0; i < 3; i++) {
+    const ly = y + h * (0.28 + i * 0.2);
+    ctx.beginPath();
+    ctx.moveTo(cx - w * 0.36, ly);
+    ctx.lineTo(cx - w * 0.36 + w * (0.3 + i * 0.16), ly);
+    ctx.stroke();
+  }
+}
+
+function drawDoor(ctx: CanvasRenderingContext2D, cx: number, trim: string) {
+  const w = WIDTH * 0.055;
+  const h = FLOOR_Y - CEILING_Y - HEIGHT * 0.04;
+  const y = FLOOR_Y - h;
+  ctx.fillStyle = trim;
+  ctx.fillRect(cx - w / 2, y, w, h);
+  ctx.fillStyle = "rgba(0,0,0,0.35)";
+  ctx.fillRect(cx - w / 2 + w * 0.12, y + h * 0.06, w * 0.76, h * 0.88);
+}
+
+function drawShelf(ctx: CanvasRenderingContext2D, cx: number, trim: string) {
+  const w = WIDTH * 0.1;
+  const y = CEILING_Y + (FLOOR_Y - CEILING_Y) * 0.42;
+  ctx.fillStyle = trim;
+  for (let i = 0; i < 3; i++) {
+    const sy = y + i * HEIGHT * 0.055;
+    ctx.fillRect(cx - w / 2, sy, w, HEIGHT * 0.008);
+    // Objects on the shelf, sized off the shelf index so they stay stable.
+    for (let j = 0; j < 4; j++) {
+      const oh = HEIGHT * (0.016 + ((i + j) % 3) * 0.006);
+      ctx.fillRect(cx - w / 2 + w * (0.08 + j * 0.22), sy - oh, w * 0.12, oh);
+    }
+  }
 }
