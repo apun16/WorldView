@@ -26,7 +26,7 @@ const FIGURE_COLOR = "#000000";
  * (forest's hover and languageMatch are the same value), so only an off-palette
  * colour reads as "clickable" across all four.
  */
-export const AGENT_HOVER_COLOR = "#ffffff";
+export const AGENT_HOVER_COLOR = "#fff3e0";
 
 // three-globe recreates marker meshes whenever the data or accessor changes,
 // and three.js never disposes them for us. Sharing geometry/material/texture

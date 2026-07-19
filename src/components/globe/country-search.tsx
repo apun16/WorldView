@@ -59,7 +59,7 @@ export default function CountrySearch({
 
   return (
     <div
-      className={`absolute bottom-5 z-10 w-56 transition-[right] duration-300 ease-out sm:w-64 ${
+      className={`absolute bottom-5 z-10 w-56 transition-all duration-300 ease-out sm:w-64 ${
         shifted ? "right-[calc(1.25rem+min(90vw,380px))]" : "right-5"
       }`}
     >
@@ -92,21 +92,21 @@ export default function CountrySearch({
               inputRef.current?.blur();
             }
           }}
-          className="w-full rounded-full border border-white/15 bg-[#070a14]/85 px-4 py-2 font-mono text-xs text-zinc-100 placeholder:text-zinc-500 backdrop-blur-md outline-none focus:border-white/30"
+          className="w-full rounded-full border border-cream/15 bg-dusk-panel/85 px-4 py-2 text-sm text-cream placeholder:text-cream/40 backdrop-blur-md outline-none focus:border-apricot/50"
         />
 
         {open && matches.length > 0 && (
-          <ul className="absolute bottom-full right-0 mb-2 max-h-64 w-full overflow-y-auto rounded-lg border border-white/10 bg-[#070a14]/95 py-1 backdrop-blur-md">
+          <ul className="animate-in fade-in slide-in-from-bottom-3 duration-200 absolute bottom-full right-0 mb-2 max-h-64 w-full overflow-y-auto rounded-xl border border-cream/10 bg-dusk-panel/95 py-1 backdrop-blur-md">
             {matches.map((c, i) => (
               <li key={c.properties.iso2}>
                 <button
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => pick(c)}
-                  className={`block w-full truncate px-3 py-1.5 text-left font-mono text-xs ${
+                  className={`block w-full truncate px-3.5 py-1.5 text-left text-sm ${
                     i === highlight
-                      ? "bg-white/10 text-zinc-100"
-                      : "text-zinc-300 hover:bg-white/5"
+                      ? "bg-apricot/15 text-cream"
+                      : "text-cream/70 hover:bg-cream/5"
                   }`}
                 >
                   {c.properties.name}
