@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import type { CountryFeature } from "@/lib/geo-types";
 import type { Agent } from "@/lib/agents";
 import type { PanelView } from "@/components/globe/culture-globe";
+import StayWidget from "@/components/globe/stay-widget";
 import {
   getScenarioOptions,
   isLanguageSupported,
@@ -368,6 +369,16 @@ function CountryView({
             pick a guide on the map to begin
           </p>
         )}
+      </div>
+
+      <div className="mt-6">
+        <p className="font-mono text-xs text-zinc-500">actually go there</p>
+        <p className="mt-1 text-xs text-zinc-600">
+          real stays in {p.capital}, booked right now — no imagination required.
+        </p>
+        <div className="mt-3">
+          <StayWidget lat={p.lat} lng={p.lng} place={`${p.capital}, ${p.name}`} />
+        </div>
       </div>
     </div>
   );
