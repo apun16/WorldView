@@ -14,13 +14,44 @@ export function avatarPath(identity: AgentIdentity): string {
   return `/models/guides/${identity.gender}.glb`;
 }
 
-// Clips must ship inside the avatar file itself. There used to be a shared
-// animation library retargeted across rigs here; it is gone deliberately.
-// Even rigs that look like the same family disagree about bone rest
-// orientations (a nominally-Mixamo pair measured 131° apart at the
-// shoulders), and every retargeting scheme we tried turned that mismatch
-// into mangled limbs. Bundled clips are authored against their own skeleton
-// and cannot break that way.
+/**
+ * Clip files authored for the avatar's own skeleton — Ready Player Me's
+ * animation library, which shares the RPM rig exactly.
+ *
+ * External clips are accepted under one strict rule: tracks must bind to the
+ * avatar's bones BY EXACT NAME. No renaming, no retargeting. There used to be
+ * a cross-rig retargeting layer here and it is gone deliberately — rigs that
+ * look like the same family still disagree about bone rest orientations (a
+ * nominally-Mixamo pair measured 131° apart at the shoulders), and every
+ * scheme we tried turned that mismatch into mangled limbs or a face-planted
+ * avatar. Exact-name binding cannot fail that way: a clip either drives the
+ * skeleton it was authored for, or it is rejected and the procedural guide
+ * stays.
+ */
+function animationPaths(identity: AgentIdentity): Record<string, string> {
+  const dir = `/models/animations/${identity.gender}`;
+  return {
+    idle: `${dir}/idle.glb`,
+    walking: `${dir}/walk.glb`,
+    speaking: `${dir}/talk.glb`,
+  };
+}
+
+/**
+ * Bones a clip must drive for it to be usable at all. A clip authored for a
+ * different skeleton binds none of these (its names carry a rig prefix); a
+ * clip for the right skeleton binds all of them even when it also carries
+ * tracks for optional bones this body lacks (fingertip ends, jaw, eyes).
+ */
+const CORE_BONES = [
+  "Hips",
+  "Spine",
+  "Head",
+  "LeftArm",
+  "RightArm",
+  "LeftUpLeg",
+  "RightUpLeg",
+];
 
 // Adult eye-ish height in metres. Sources disagree on units — Ready Player Me
 // exports at 1:1, Mixamo at 1:100 — and for a skinned mesh the raw accessor
@@ -172,6 +203,20 @@ export async function loadGltfGuide(
     if (bundled) clips.set(state, bundled);
   }
 
+  // External clip files fill the gaps, gated on exact-name binding.
+  const bones = new Set<string>();
+  model.traverse((child) => {
+    if ((child as THREE.Bone).isBone) bones.add(child.name);
+  });
+  for (const [state, path] of Object.entries(animationPaths(identity))) {
+    if (clips.has(state as GuideState)) continue;
+    const file = await loadOrNull(loader, path);
+    const clip = file?.animations[0];
+    if (!clip) continue;
+    const accepted = bindByExactName(clip, bones);
+    if (accepted) clips.set(state as GuideState, accepted);
+  }
+
   // A guide standing calmly while speaking reads fine; missing talk clips
   // borrow the idle. Missing idle or walk cannot be papered over.
   const idle = clips.get("idle");
@@ -182,8 +227,8 @@ export async function loadGltfGuide(
 
   if (!clips.has("idle") || !clips.has("walking")) {
     // A T-posing or sliding avatar looks more broken than a moving primitive
-    // one, so an avatar without its own idle+walk is rejected outright.
-    console.debug("[walk] avatar lacks bundled idle/walk clips; keeping procedural guide");
+    // one, so an avatar without idle+walk is rejected outright.
+    console.debug("[walk] no idle/walk clips bind to this avatar; keeping procedural guide");
     return null;
   }
 
@@ -207,6 +252,34 @@ function loadOrNull(
 }
 
 const STATES: GuideState[] = ["idle", "walking", "speaking", "gesturing"];
+
+/**
+ * Accepts a clip only if it drives every core bone of this avatar by exact
+ * name, dropping tracks for optional bones the body lacks (fingertip ends,
+ * jaw, eyes). Returns null when the clip was authored for a different
+ * skeleton — those bind zero core bones, because their names carry a rig
+ * prefix.
+ */
+function bindByExactName(
+  clip: THREE.AnimationClip,
+  bones: Set<string>
+): THREE.AnimationClip | null {
+  const bound = clip.clone();
+  bound.tracks = bound.tracks.filter((track) => {
+    const dot = track.name.indexOf(".");
+    return dot > 0 && bones.has(track.name.slice(0, dot));
+  });
+
+  const driven = new Set(
+    bound.tracks.map((track) => track.name.slice(0, track.name.indexOf(".")))
+  );
+  const coreCovered = CORE_BONES.every(
+    (core) => !bones.has(core) || driven.has(core)
+  );
+  if (!coreCovered || driven.size === 0) return null;
+
+  return bound;
+}
 
 /**
  * Rotates the model so it faces +Z, which is the direction followPath walks
