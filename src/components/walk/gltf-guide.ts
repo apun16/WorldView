@@ -14,15 +14,13 @@ export function avatarPath(identity: AgentIdentity): string {
   return `/models/guides/${identity.gender}.glb`;
 }
 
-/**
- * One shared animation library, loaded once. Clips are matched out of it by
- * name and retargeted onto whichever skeleton the avatar uses.
- */
-const ANIMATION_LIBRARY = "/models/animations/library.glb";
-
-// Ready Player Me avatars face +Z, which matches how followPath and the
-// face-the-user code orient the root. Flip to Math.PI if a model faces away.
-const MODEL_FACING_OFFSET = 0;
+// Clips must ship inside the avatar file itself. There used to be a shared
+// animation library retargeted across rigs here; it is gone deliberately.
+// Even rigs that look like the same family disagree about bone rest
+// orientations (a nominally-Mixamo pair measured 131° apart at the
+// shoulders), and every retargeting scheme we tried turned that mismatch
+// into mangled limbs. Bundled clips are authored against their own skeleton
+// and cannot break that way.
 
 // Adult eye-ish height in metres. Sources disagree on units — Ready Player Me
 // exports at 1:1, Mixamo at 1:100 — and for a skinned mesh the raw accessor
@@ -45,7 +43,7 @@ export class GltfGuide implements GuideAvatar {
 
   constructor(model: THREE.Object3D, clips: Map<GuideState, THREE.AnimationClip>) {
     this.model = model;
-    model.rotation.y = MODEL_FACING_OFFSET;
+    faceForward(model);
     this.object.add(model);
 
     this.mixer = new THREE.AnimationMixer(model);
@@ -169,30 +167,23 @@ export async function loadGltfGuide(
   });
 
   const clips = new Map<GuideState, THREE.AnimationClip>();
-  const skeleton = boneNames(model);
-
-  // Clips bundled inside the avatar itself take priority — they are already
-  // authored against its own skeleton.
   for (const state of STATES) {
     const bundled = pickClip(avatar.animations, state);
     if (bundled) clips.set(state, bundled);
   }
 
-  // Anything still missing comes from the shared library, retargeted.
-  if (clips.size < STATES.length) {
-    const library = await loadOrNull(loader, ANIMATION_LIBRARY);
-    if (library) {
-      for (const state of STATES) {
-        if (clips.has(state)) continue;
-        const clip = pickClip(library.animations, state);
-        if (clip) clips.set(state, retarget(clip, skeleton));
-      }
-    }
+  // A guide standing calmly while speaking reads fine; missing talk clips
+  // borrow the idle. Missing idle or walk cannot be papered over.
+  const idle = clips.get("idle");
+  if (idle) {
+    if (!clips.has("speaking")) clips.set("speaking", idle);
+    if (!clips.has("gesturing")) clips.set("gesturing", clips.get("speaking") ?? idle);
   }
 
-  if (clips.size === 0) {
-    // A T-posing avatar looks more broken than a moving primitive one.
-    console.debug("[walk] avatar found but no animations; keeping procedural guide");
+  if (!clips.has("idle") || !clips.has("walking")) {
+    // A T-posing or sliding avatar looks more broken than a moving primitive
+    // one, so an avatar without its own idle+walk is rejected outright.
+    console.debug("[walk] avatar lacks bundled idle/walk clips; keeping procedural guide");
     return null;
   }
 
@@ -218,6 +209,36 @@ function loadOrNull(
 const STATES: GuideState[] = ["idle", "walking", "speaking", "gesturing"];
 
 /**
+ * Rotates the model so it faces +Z, which is the direction followPath walks
+ * and the face-the-user code assumes.
+ *
+ * Detected from the skeleton rather than configured: the toes sit forward of
+ * the ankles on any humanoid stance, so the ankle→toe direction is the facing.
+ * Hardcoding an offset per model is how an avatar ends up walking backwards
+ * the day someone swaps the file.
+ */
+function faceForward(model: THREE.Object3D) {
+  model.updateWorldMatrix(true, true);
+
+  const bones: THREE.Object3D[] = [];
+  model.traverse((child) => {
+    if ((child as THREE.Bone).isBone) bones.push(child);
+  });
+  const foot = bones.find((b) => /LeftFoot$/i.test(b.name));
+  const toe = bones.find((b) => /LeftToe(Base)?(_End)?$/i.test(b.name));
+  if (!foot || !toe) return;
+
+  const forward = toe
+    .getWorldPosition(new THREE.Vector3())
+    .sub(foot.getWorldPosition(new THREE.Vector3()));
+  forward.y = 0;
+  if (forward.lengthSq() < 1e-8) return;
+
+  // Rotating by -yaw carries the detected forward direction onto +Z.
+  model.rotation.y -= Math.atan2(forward.x, forward.z);
+}
+
+/**
  * Scales the avatar to a human height and drops its feet to y=0.
  *
  * Without this a Mixamo export lands 1.7cm tall and an RPM one floats, because
@@ -237,57 +258,6 @@ function normalizeHeight(model: THREE.Object3D) {
   model.updateWorldMatrix(true, true);
   const scaled = new THREE.Box3().setFromObject(model);
   model.position.y -= scaled.min.y;
-}
-
-/** Every bone name in the avatar's skeleton. */
-function boneNames(model: THREE.Object3D): Set<string> {
-  const names = new Set<string>();
-  model.traverse((child) => {
-    if ((child as THREE.Bone).isBone) names.add(child.name);
-  });
-  return names;
-}
-
-/**
- * Rebinds a clip onto a skeleton that names its bones differently.
- *
- * Mixamo exports prefix every bone with "mixamorig:"; Ready Player Me avatars
- * use the same hierarchy without it. The bones are otherwise identical, so
- * adding or removing that prefix is all it takes to make a Mixamo clip drive an
- * RPM body.
- *
- * Note the prefix has no colon here. three.js runs every node name through
- * PropertyBinding.sanitizeNodeName, which deletes the characters reserved by
- * its property-path syntax — ":" among them. So by the time a clip reaches us
- * its tracks read "mixamorigHips", never "mixamorig:Hips".
- */
-function retarget(
-  clip: THREE.AnimationClip,
-  skeleton: Set<string>
-): THREE.AnimationClip {
-  const PREFIX = "mixamorig";
-  const retargeted = clip.clone();
-
-  retargeted.tracks = retargeted.tracks.filter((track) => {
-    const dot = track.name.indexOf(".");
-    if (dot < 0) return true;
-
-    const bone = track.name.slice(0, dot);
-    const property = track.name.slice(dot);
-    if (skeleton.has(bone)) return true;
-
-    const alternative = bone.startsWith(PREFIX)
-      ? bone.slice(PREFIX.length)
-      : PREFIX + bone;
-    // Tracks that still do not resolve would bind to nothing and silently
-    // freeze that limb, so drop them.
-    if (!skeleton.has(alternative)) return false;
-
-    track.name = alternative + property;
-    return true;
-  });
-
-  return retargeted;
 }
 
 /** Matches a clip by name, falling back to the file's only clip. */

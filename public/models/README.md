@@ -5,62 +5,52 @@ walk starts with a procedural figure built from primitives and swaps a real
 avatar in the moment one loads, the same way photospheres upgrade the sky.
 
 ```
-public/models/guides/female.glb        the avatar bodies
-public/models/guides/male.glb
-public/models/animations/library.glb   one file, all clips
+public/models/guides/male.glb       currently: three.js "Soldier" (Mixamo-derived)
+public/models/guides/female.glb     absent — female guides use the procedural figure
 ```
 
 Which body is used comes from the guide's `gender`, which `src/lib/agents.ts`
-already assigns deterministically per country.
+assigns deterministically per country.
 
-## What is installed
+## The one rule: an avatar must bring its own animations
 
-All three come from the [three.js example
-assets](https://github.com/mrdoob/three.js/tree/dev/examples/models/gltf), which
-is also where their licensing lives — check it before shipping commercially.
-The two Mixamo-derived files (Michelle, X Bot) originate from Adobe Mixamo.
+`src/components/walk/gltf-guide.ts` only accepts a model whose file contains
+**bundled clips including an idle and a walk** (matched by name — `Idle`,
+`Walk`, etc.). Missing talk clips borrow the idle; a missing idle or walk
+rejects the avatar and the procedural guide stays.
 
-| File | Source | Notes |
-|---|---|---|
-| `guides/male.glb` | `readyplayer.me.glb` | A real Ready Player Me avatar — 19 textures (skin, eyes, teeth, beard). No bundled animations. |
-| `guides/female.glb` | `Michelle.glb` | Mixamo character, 4 textures. Ships only a samba dance, so it uses the library too. |
-| `animations/library.glb` | `Xbot.glb` | Untextured, never rendered — it is here purely for its clips: idle, walk, run, agree, headShake. |
+There used to be a shared animation library retargeted across skeletons here.
+It is gone deliberately, after three attempts:
 
-## How clips reach a body
+1. Renaming `mixamorig`-prefixed tracks — broke on differing root
+   orientations (one rig hid a +90° root rotation that its hips' rest pose
+   cancelled; overwriting the hips pitched her face-first into the floor) and
+   on units (Mixamo rigs are centimetres, Ready Player Me metres — a renamed
+   hip track flings the body 100 m up).
+2. `SkeletonUtils.retargetClip` — leaked a ×95 scale onto the live hips bone
+   (it restores bone positions after sampling, but not scales), stretching the
+   avatar into a 35-metre giraffe.
+3. Rest-pose-gated transplants — measurement killed it: even two nominally
+   Mixamo rigs disagreed by 131° at the shoulders, so "same family" is not a
+   real guarantee.
 
-`src/components/walk/gltf-guide.ts` prefers clips bundled inside an avatar, then
-falls back to the shared library, matching by keyword (`idle`, `walk`,
-`talk`/`agree`, …).
+Bundled clips are authored against their own skeleton and cannot fail in any
+of these ways. That property is worth more than asset reuse.
 
-Two conversions happen on the way in, and both are load-bearing:
+## Getting a compatible avatar
 
-**Skeleton retargeting.** Mixamo prefixes every bone with `mixamorig:`; Ready
-Player Me uses the identical hierarchy without it. The loader adds or strips
-that prefix per track so one clip drives either body.
+[Mixamo](https://www.mixamo.com): pick a character, pick an animation, download
+as glTF/FBX **with skin**, and combine multiple clips into one `.glb` (Blender's
+glTF export does this — name the actions `Idle`, `Walk`, `Talk`). Any source
+works as long as idle+walk ship inside the file.
 
-Watch out: three.js runs node names through
-`PropertyBinding.sanitizeNodeName`, which *deletes* the characters reserved by
-its property-path syntax — including `:`. So a track arrives named
-`mixamorigHips`, never `mixamorig:Hips`. Matching on the colon form silently
-drops every track and leaves the avatar T-posing.
+Scale and facing do not matter: the loader measures the model after load and
+normalises it to 1.75 m with feet at y=0, and detects which way it faces from
+the ankle→toe direction and rotates it to +Z. (The current Soldier ships facing
+−Z — a hardcoded offset would have him walking backwards.)
 
-**Height normalisation.** Ready Player Me exports at 1:1, Mixamo at 1:100, and a
-skinned mesh's raw accessor bounds do not predict its rendered size. The loader
-measures the model's bounding box after load, scales it to 1.75 m, and drops its
-feet to `y=0`. Any future avatar can be dropped in at any scale.
+## Licensing
 
-## Swapping in different avatars
-
-Replace the `.glb` and reload — no code change needed, as long as the rig is
-Mixamo-compatible (the near-universal convention for humanoid glTF). If a model
-faces away from you, flip `MODEL_FACING_OFFSET` to `Math.PI` in
-`gltf-guide.ts`.
-
-For custom avatars, [readyplayer.me](https://readyplayer.me) generates one from
-a photo and exports `.glb` directly.
-
-## Why an avatar without animations is rejected
-
-If a body loads but no clip binds to it, the walk **keeps the procedural
-guide** and logs a note. A T-posing humanoid sliding through a market looks far
-more broken than a moving primitive one, so this is deliberate.
+`male.glb` is the three.js example `Soldier.glb` (Mixamo-derived). Check the
+[three.js examples licensing](https://github.com/mrdoob/three.js/tree/dev/examples/models/gltf)
+and Adobe Mixamo's terms before shipping commercially.
