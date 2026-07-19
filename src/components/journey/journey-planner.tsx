@@ -19,11 +19,14 @@ export default function JourneyPlanner({
   country,
   guide,
   localTime,
+  language,
 }: {
   country: CountryInfo;
   guide: AgentIdentity;
   /** Computed on the server so hydration cannot disagree about the hour. */
   localTime: LocalTime;
+  /** Language the guide should teach, chosen back on the globe. */
+  language?: string | null;
 }) {
   const [stops, setStops] = useState<DestinationId[]>([]);
   const [departed, setDeparted] = useState(false);
@@ -56,7 +59,7 @@ export default function JourneyPlanner({
           country={country}
           guide={guide}
           stops={stops}
-          localTime={localTime}
+          language={language}
         />
       </JourneyShell>
     );

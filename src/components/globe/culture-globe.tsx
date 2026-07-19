@@ -8,7 +8,7 @@ import type { CountryCollection, CountryFeature, SemanticConnection } from "@/li
 import CulturePanel from "@/components/globe/culture-panel";
 import ConnectionTicker from "@/components/globe/connection-ticker";
 import ConnectionsPanel from "@/components/globe/connections-panel";
-import { ACTIVE_PALETTE, heatColorFor } from "@/lib/globe-palettes";
+import { ACTIVE_PALETTE, heatColorFor, scaleToGradient } from "@/lib/globe-palettes";
 import CountrySearch from "@/components/globe/country-search";
 import { ALLIANCES } from "@/lib/alliances";
 import {
@@ -461,12 +461,6 @@ export default function CultureGlobe() {
       />
 
       <div className="absolute left-1/2 top-5 z-10 flex -translate-x-1/2 flex-col items-center">
-        <PaletteSlider
-          palettes={GLOBE_PALETTES}
-          index={paletteIndex}
-          onChange={setPaletteIndex}
-        />
-
         {palette.heatmap && (
           <div className="pointer-events-none flex items-center gap-2 rounded-full border border-white/10 bg-[#070a14]/80 px-3 py-1.5 backdrop-blur-md">
             <span className="font-mono text-[9px] text-zinc-400">
@@ -484,13 +478,6 @@ export default function CultureGlobe() {
           </div>
         )}
       </div>
-
-      <CountrySearch
-        countries={countries}
-        onSelect={handleCountryClick}
-        shifted={panelOpen}
-      />
->>>>>>> origin/main
 
       <CulturePanel
         panel={panel}

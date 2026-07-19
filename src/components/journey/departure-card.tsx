@@ -2,22 +2,22 @@ import Link from "next/link";
 import type { CountryInfo } from "@/lib/country-index";
 import type { AgentIdentity } from "@/lib/agents";
 import { findDestination, type DestinationId } from "@/lib/destinations";
-import type { LocalTime } from "@/lib/local-time";
-import WalkSession from "@/components/journey/walk-session";
+import { walkHref } from "@/lib/walk/walk-plan";
 
 /**
- * Confirms the planned route, then hands off to a live ElevenLabs voice walk.
+ * Confirms the planned route, then hands off to the 3D walk.
  */
 export default function DepartureCard({
   country,
   guide,
   stops,
-  localTime,
+  language,
 }: {
   country: CountryInfo;
   guide: AgentIdentity;
   stops: DestinationId[];
-  localTime: LocalTime;
+  /** Which language the guide should teach; null falls back on the walk route. */
+  language?: string | null;
 }) {
   return (
     <div>
@@ -56,12 +56,21 @@ export default function DepartureCard({
         })}
       </ol>
 
-      <WalkSession
-        country={country}
-        guide={guide}
-        stops={stops}
-        localTime={localTime}
-      />
+      <div className="mt-8 rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-zinc-500">
+          next
+        </p>
+        <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+          {guide.name} will meet you at the first stop and move between these
+          places with you, teaching you words as you go.
+        </p>
+        <Link
+          href={walkHref(country.iso2, guide.id, stops, language)}
+          className="mt-5 block w-full rounded-full bg-sky-400/90 px-4 py-2.5 text-center font-mono text-xs text-[#05070d] transition-colors hover:bg-sky-300"
+        >
+          enter the walk →
+        </Link>
+      </div>
 
       <Link
         href="/explore"

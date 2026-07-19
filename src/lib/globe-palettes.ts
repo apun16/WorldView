@@ -164,4 +164,3 @@ function parseRgba(color: string): [number, number, number, number] {
   const parts = m[1].split(",").map((p) => parseFloat(p));
   return [parts[0], parts[1], parts[2], parts[3] ?? 1];
 }
->>>>>>> origin/main

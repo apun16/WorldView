@@ -34,6 +34,7 @@ export default async function JourneyPage({
       guide={agent}
       localTime={localTimeFromLongitude(country.lng)}
       language={lang ?? null}
+
     />
   );
 }

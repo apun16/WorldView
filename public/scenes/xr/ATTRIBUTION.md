@@ -35,6 +35,11 @@ file.
 | File | Source | Author | Licence |
 |---|---|---|---|
 | `_subregion/southern-asia/street.jpg` | [360° panoramic view of Domlur 2nd Stage, Bengaluru](https://commons.wikimedia.org/wiki/File:360°_panoramic_view_of_Domlur_2nd_Stage,_Bengaluru,_Karnataka,_India.JPG) | Subhashish Panigrahi | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
+| `_subregion/southern-asia/school.jpg` | [Gopalpur High School, East Midnapore](https://commons.wikimedia.org/wiki/File:Gopalpur_High_School_-_360x180_Degree_Equirectangular_View_-_Mahisadal_-_East_Midnapore_2015-09-18_3778-3786.tif) | Biswarup Ganguly | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) |
+
+Street-level photographs served live from **Mapillary** (114 countries) are
+CC BY-SA and credited in-app to the individual photographer, per
+`src/lib/walk/mapillary-coverage.ts`.
 
 ## Before adding an image
 

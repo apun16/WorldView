@@ -4,7 +4,7 @@ import { findCountry } from "@/lib/country-index";
 import { findAgentIdentity } from "@/lib/agents";
 import { parseStopsParam } from "@/lib/walk/walk-plan";
 import { buildWalkScript } from "@/lib/walk/walk-script";
-import { GLOBE_PALETTES } from "@/lib/globe-palettes";
+import { ACTIVE_PALETTE } from "@/lib/globe-palettes";
 import { findStreetPhoto } from "@/lib/mapillary";
 
 // The scene is client-only, like the globe.
@@ -45,7 +45,7 @@ export default async function WalkPage({
       guide={agent}
       stops={stops}
       script={script}
-      accentColor={GLOBE_PALETTES[2].selected}
+      accentColor={ACTIVE_PALETTE.selected}
       streetCredit={streetPhoto?.creator ?? null}
     />
   );
