@@ -27,6 +27,11 @@ export type WalkDynamicVariables = {
   location_sequence: string;
   /** First stop — start of the sequence. Agent tracks further progress itself. */
   current_location: string;
+  /**
+   * Same as current_location for now — the live agent first_message still
+   * references {{location_type}}, so omitting it aborts the WebRTC session.
+   */
+  location_type: string;
   time_of_day: string;
   season_or_weather: string;
   proficiency_level: string;
@@ -102,6 +107,7 @@ export function buildWalkDynamicVariables(input: {
     target_language: input.language.displayName,
     location_sequence: phrases.join(", "),
     current_location: current,
+    location_type: current,
     time_of_day: `${input.localTime.period} (${input.localTime.label}) — ${input.localTime.mood}`,
     season_or_weather: input.seasonOrWeather ?? "typical for the season",
     proficiency_level: input.proficiencyLevel ?? "beginner",

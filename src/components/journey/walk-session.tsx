@@ -56,7 +56,6 @@ function WalkSessionInner({
   const connecting =
     conversation.status === "connecting" || starting;
 
-  // Agent calls this when narrating a move to the next stop.
   useConversationClientTool(
     "show_scene",
     (parameters: { scene_id?: string; location?: string }) => {
@@ -96,10 +95,14 @@ function WalkSessionInner({
         throw new Error(body?.error ?? "Could not start the walk");
       }
 
-      const { signedUrl, userId } = (await res.json()) as {
-        signedUrl: string;
+      const { token, userId } = (await res.json()) as {
+        token: string;
         userId?: string;
       };
+
+      if (!token) {
+        throw new Error("No conversation token returned");
+      }
 
       const dynamicVariables = buildWalkDynamicVariables({
         country,
@@ -109,11 +112,18 @@ function WalkSessionInner({
         localTime,
       });
 
+      // Voice agents require WebRTC + conversationToken (not signed WebSocket URL).
       conversation.startSession({
-        signedUrl,
-        connectionType: "websocket",
+        conversationToken: token,
+        connectionType: "webrtc",
         userId,
         dynamicVariables,
+        onConnect: () => setStarting(false),
+        onDisconnect: (details) => {
+          if (details.reason === "error") {
+            setError(details.message || "Disconnected from the guide");
+          }
+        },
         onMessage: ({ message, role }) => {
           appendLine(role === "agent" ? "guide" : "you", message);
         },
@@ -123,7 +133,6 @@ function WalkSessionInner({
       const message =
         err instanceof Error ? err.message : "Could not start the walk";
       setError(message);
-    } finally {
       setStarting(false);
     }
   };
@@ -205,15 +214,17 @@ function WalkSessionInner({
         )}
       </div>
 
-      {connected && (
+      {(connected || connecting) && (
         <p className="mt-4 font-mono text-[11px] text-zinc-500">
-          now at {locationPhrase(activeStop)}
-          {" · "}
-          {conversation.isSpeaking
-            ? `${guide.name} is speaking…`
-            : conversation.isListening
-              ? "listening — your turn"
-              : "connected"}
+          {connecting && !connected
+            ? "connecting to ElevenLabs…"
+            : `now at ${locationPhrase(activeStop)} · ${
+                conversation.isSpeaking
+                  ? `${guide.name} is speaking…`
+                  : conversation.isListening
+                    ? "listening — your turn"
+                    : "connected"
+              }`}
         </p>
       )}
 
