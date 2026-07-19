@@ -21,14 +21,14 @@ const SCENES = [
 // Dark -> light density ramp. Brighter pixels get denser glyphs.
 const RAMP = " .·:-=+co*ae68#@";
 
-// WorldView cool palette gradient, keyed on luminance [0,1].
-// deep navy -> teal -> sky -> pale ice
+// WorldView warm dusk gradient, keyed on luminance [0,1].
+// deep plum -> wine -> burnt sienna -> apricot -> pale cream
 const STOPS: Array<[number, [number, number, number]]> = [
-  [0.0, [8, 12, 30]],
-  [0.28, [18, 44, 66]],
-  [0.55, [26, 104, 132]],
-  [0.78, [56, 189, 248]],
-  [1.0, [214, 240, 255]],
+  [0.0, [24, 16, 34]],
+  [0.28, [82, 42, 48]],
+  [0.55, [176, 94, 58]],
+  [0.78, [245, 185, 113]],
+  [1.0, [255, 241, 220]],
 ];
 
 function gradeColor(luma: number): [number, number, number] {
@@ -125,7 +125,7 @@ export default function AsciiScene() {
       lctx.clearRect(0, 0, width, height);
 
       // opaque base so each layer is fully opaque for a clean cross-dissolve
-      lctx.fillStyle = "#05070d";
+      lctx.fillStyle = "#151020";
       lctx.fillRect(0, 0, width, height);
 
       // cover-fit the photo
@@ -138,11 +138,11 @@ export default function AsciiScene() {
       photoCtx.clearRect(0, 0, width, height);
       photoCtx.drawImage(img, dx, dy, dw, dh);
 
-      // faint, cool-graded photo underlay so silhouettes read
+      // faint, warm-graded photo underlay so silhouettes read
       lctx.globalAlpha = 0.14;
       lctx.drawImage(photoCanvas, 0, 0, width, height);
       lctx.globalAlpha = 1;
-      lctx.fillStyle = "rgba(6, 10, 24, 0.55)";
+      lctx.fillStyle = "rgba(21, 16, 32, 0.55)";
       lctx.fillRect(0, 0, width, height);
 
       // sample grid

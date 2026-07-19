@@ -8,8 +8,7 @@ import type { CountryCollection, CountryFeature, SemanticConnection } from "@/li
 import CulturePanel from "@/components/globe/culture-panel";
 import ConnectionTicker from "@/components/globe/connection-ticker";
 import ConnectionsPanel from "@/components/globe/connections-panel";
-import { GLOBE_PALETTES, heatColorFor, scaleToGradient } from "@/lib/globe-palettes";
-import PaletteSlider from "@/components/globe/palette-slider";
+import { ACTIVE_PALETTE, heatColorFor } from "@/lib/globe-palettes";
 import CountrySearch from "@/components/globe/country-search";
 import { ALLIANCES } from "@/lib/alliances";
 import {
@@ -46,11 +45,10 @@ export default function CultureGlobe() {
   const [panel, setPanel] = useState<PanelView>({ kind: "idle" });
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [hoveredAgent, setHoveredAgent] = useState<Agent | null>(null);
-  const [paletteIndex, setPaletteIndex] = useState(0);
   const [connections, setConnections] = useState<SemanticConnection[]>([]);
   const [showLanguageThreads, setShowLanguageThreads] = useState(false);
   const [activeAlliances, setActiveAlliances] = useState<Set<string>>(new Set());
-  const palette = GLOBE_PALETTES[paletteIndex];
+  const palette = ACTIVE_PALETTE;
 
   const toggleAlliance = useCallback((id: string) => {
     setActiveAlliances((prev) => {
@@ -406,7 +404,7 @@ export default function CultureGlobe() {
         polygonsTransitionDuration={250}
         polygonLabel={(feat: object) => {
           const f = feat as CountryFeature;
-          return `<div style="font-family: ui-monospace, monospace; font-size: 12px; padding: 4px 8px; background: rgba(5,7,13,0.9); border: 1px solid rgba(125,211,252,0.3); border-radius: 4px; color: #e0f2fe;">${f.properties.name}</div>`;
+          return `<div style="font-family: var(--font-karla), sans-serif; font-size: 12.5px; padding: 5px 10px; background: rgba(21,14,30,0.92); border: 1px solid rgba(245,185,113,0.35); border-radius: 8px; color: #fdeeda;">${f.properties.name}</div>`;
         }}
         onPolygonHover={(feat) => setHovered((feat as CountryFeature) ?? null)}
         onPolygonClick={handleCountryClick}
@@ -435,15 +433,24 @@ export default function CultureGlobe() {
         onObjectHover={(d: object | null) => setHoveredAgent((d as AgentMarker) ?? null)}
         objectLabel={(d: object) => {
           const a = d as AgentMarker;
-          return `<div style="font-family: ui-monospace, monospace; font-size: 12px; padding: 4px 8px; background: rgba(5,7,13,0.9); border: 1px solid rgba(125,211,252,0.3); border-radius: 4px; color: #e0f2fe;">${a.name}</div>`;
+          if (a.id === selectedAgent?.id) {
+            return `<div style="font-family: var(--font-karla), sans-serif; font-size: 12.5px; padding: 5px 10px; background: rgba(21,14,30,0.92); border: 1px solid rgba(245,185,113,0.35); border-radius: 8px; color: #fdeeda;">${a.name}</div>`;
+          }
+          return "";
         }}
         arcLabel={(d: object) => {
           const a = d as { fromName: string; toName: string; label: string };
-          return `<div style="max-width:220px; font-family: ui-monospace, monospace; font-size: 11px; line-height:1.4; padding: 6px 9px; background: rgba(5,7,13,0.92); border: 1px solid rgba(249,115,22,0.4); border-radius: 6px; color: #fed7aa;">${a.fromName} → ${a.toName}<br/><span style="color:#ffedd5;">${a.label}</span></div>`;
+          return `<div style="max-width:220px; font-family: var(--font-karla), sans-serif; font-size: 11.5px; line-height:1.45; padding: 7px 10px; background: rgba(21,14,30,0.93); border: 1px solid rgba(233,196,106,0.35); border-radius: 10px; color: #e9c46a;">${a.fromName} → ${a.toName}<br/><span style="color:#fdeeda;">${a.label}</span></div>`;
         }}
       />
 
       <ConnectionTicker connections={semanticArcs} />
+
+      {panel.kind === "idle" && (
+        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <CountrySearch countries={countries} onSelect={handleCountryClick} shifted={panelOpen} />
+        </div>
+      )}
 
       <ConnectionsPanel
         alliances={ALLIANCES}
@@ -483,6 +490,7 @@ export default function CultureGlobe() {
         onSelect={handleCountryClick}
         shifted={panelOpen}
       />
+>>>>>>> origin/main
 
       <CulturePanel
         panel={panel}
@@ -497,8 +505,8 @@ export default function CultureGlobe() {
       />
 
       {panel.kind === "idle" && (
-        <div className="pointer-events-none absolute bottom-5 left-1/2 -translate-x-1/2 font-mono text-[10px] tracking-widest text-zinc-500">
-          click a country to begin · drag to explore
+        <div className="pointer-events-none absolute bottom-5 left-1/2 -translate-x-1/2 font-serif text-sm italic tracking-wide text-cream/45">
+          tap a country to meet someone there · drag to wander
         </div>
       )}
     </div>
