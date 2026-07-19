@@ -11,6 +11,12 @@ import { LookControls } from "@/components/walk/look-controls";
 import WalkOverlay from "@/components/walk/walk-overlay";
 import WalkVoice from "@/components/walk/walk-voice";
 
+// The ElevenLabs voice guide is off while the 3D avatar is being worked on —
+// it opens a mic and a websocket on mount, which is noise you do not want when
+// the thing under test is whether the character renders and animates.
+// Flip back to true (or wire to an env flag) to restore the voice walk.
+const VOICE_ENABLED = false;
+
 // Capability checks are environment reads, not React state — useSyncExternalStore
 // is the sanctioned way to do them without a setState-in-effect cascade, and it
 // gives an explicit server snapshot so hydration cannot disagree.
@@ -164,7 +170,7 @@ export default function WalkExperience({
         }
       />
 
-      {!presenting && (
+      {VOICE_ENABLED && !presenting && (
         <WalkVoice
           country={country}
           guide={guide}
