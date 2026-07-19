@@ -99,6 +99,23 @@ export const GLOBE_PALETTES: GlobePalette[] = [
       legend: { low: "1 language", high: "6+ languages" },
     },
   },
+  {
+    // #4 — ACLED conflict activity. Coloured per-country in culture-globe.tsx
+    // (severity comes from external, fetched data, not CountryProperties, so
+    // it doesn't fit the metric-over-properties HeatmapSpec shape above).
+    id: "conflict",
+    name: "Conflict (ACLED)",
+    base: "rgba(120, 120, 120, 0.1)",
+    hover: "rgba(255, 255, 255, 0.92)",
+    selected: "rgba(226, 232, 240, 0.85)",
+    languageMatch: "rgba(250, 204, 21, 0.75)",
+    continentGlow: "rgba(148, 163, 184, 0.22)",
+    stroke: "rgba(120, 130, 150, 0.28)",
+    atmosphere: "#ef4444",
+    globeColor: "#0e0a0a",
+    globeEmissive: "#050303",
+    side: "rgba(14, 10, 10, 0.6)",
+  },
 ];
 
 /** The palette the app currently ships with. */

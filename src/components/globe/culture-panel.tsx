@@ -7,6 +7,7 @@ import type { Agent } from "@/lib/agents";
 import type { PanelView } from "@/components/globe/culture-globe";
 import StayWidget from "@/components/globe/stay-widget";
 import { isLanguageSupported } from "@/lib/supported-languages";
+import { SEVERITY_COLOR, type CountryConflict } from "@/lib/acled";
 
 export default function CulturePanel({
   panel,
@@ -18,6 +19,7 @@ export default function CulturePanel({
   onSelectLanguage,
   onSelectCountryFromList,
   onClose,
+  conflict,
 }: {
   panel: PanelView;
   countries: CountryFeature[];
@@ -28,6 +30,8 @@ export default function CulturePanel({
   onSelectLanguage: (continent: string, language: string) => void;
   onSelectCountryFromList: (feat: object) => void;
   onClose: () => void;
+  /** ACLED conflict rollup for the open country, if any. */
+  conflict: CountryConflict | null;
 }) {
   const continentLanguages = useMemo(() => {
     if (panel.kind !== "continent") return [];
@@ -69,6 +73,7 @@ export default function CulturePanel({
               selectedAgent={selectedAgent}
               onSelectAgent={onSelectAgent}
               onSelectContinent={onSelectContinent}
+              conflict={conflict}
             />
           )}
 
@@ -162,12 +167,14 @@ function CountryView({
   selectedAgent,
   onSelectAgent,
   onSelectContinent,
+  conflict,
 }: {
   country: CountryFeature;
   agents: Agent[];
   selectedAgent: Agent | null;
   onSelectAgent: (agent: Agent) => void;
   onSelectContinent: (continent: string) => void;
+  conflict: CountryConflict | null;
 }) {
   const p = country.properties;
   const agent = selectedAgent?.iso2 === p.iso2 ? selectedAgent : null;
@@ -184,6 +191,62 @@ function CountryView({
       <p className="mt-1 text-sm text-zinc-400">
         Meet a guide in <span className="text-zinc-200">{p.capital}</span>
       </p>
+
+      {conflict && (
+        <div className="mt-5 rounded-xl border border-rose-400/25 bg-rose-400/[0.06] p-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-rose-300/80">
+              conflict activity · ACLED
+            </p>
+            <span
+              className="shrink-0 rounded-full border px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider"
+              style={{
+                color: SEVERITY_COLOR[conflict.severity],
+                borderColor: SEVERITY_COLOR[conflict.severity] + "55",
+              }}
+            >
+              {conflict.severity}
+            </span>
+          </div>
+
+          <p className="mt-2 text-xs leading-relaxed text-zinc-300">
+            {conflict.summary}
+          </p>
+
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
+              <p className="font-mono text-[9px] uppercase tracking-wider text-zinc-500">
+                events
+              </p>
+              <p className="mt-0.5 font-mono text-sm text-zinc-100">
+                {conflict.totalEvents.toLocaleString()}
+              </p>
+            </div>
+            <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
+              <p className="font-mono text-[9px] uppercase tracking-wider text-zinc-500">
+                fatalities
+              </p>
+              <p className="mt-0.5 font-mono text-sm text-zinc-100">
+                {conflict.totalFatalities.toLocaleString()}
+              </p>
+            </div>
+          </div>
+
+          {conflict.hotspots.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {conflict.hotspots.slice(0, 4).map((hotspot) => (
+                <span
+                  key={hotspot.location}
+                  title={`${hotspot.topEventType ?? "activity"} · ${hotspot.events} events`}
+                  className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 font-mono text-[10px] text-zinc-400"
+                >
+                  {hotspot.location} · {hotspot.fatalities}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="mt-6">
         <p className="font-mono text-xs text-zinc-500">languages spoken here</p>

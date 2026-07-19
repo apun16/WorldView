@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# raw ACLED exports (large, regeneratable) — the processed output that ships
+# is public/data/acled-conflicts.json, written by scripts/acled/ingest_acled.py
+/scripts/data/*.xlsx

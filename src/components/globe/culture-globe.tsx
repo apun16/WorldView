@@ -12,6 +12,7 @@ import { GLOBE_PALETTES, ACTIVE_PALETTE, heatColorFor, scaleToGradient } from "@
 import PaletteSlider from "@/components/globe/palette-slider";
 import CountrySearch from "@/components/globe/country-search";
 import { ALLIANCES } from "@/lib/alliances";
+import { SEVERITY_COLOR, type ConflictData } from "@/lib/acled";
 import {
   getCountryAgentMarkers,
   getCountryAgents,
@@ -25,6 +26,14 @@ import {
 } from "@/components/globe/agent-marker";
 
 const Globe = dynamic(() => import("react-globe.gl"), { ssr: false });
+
+function hexToRgba(hex: string, alpha: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 
 export type PanelView =
   | { kind: "idle" }
@@ -47,6 +56,7 @@ export default function CultureGlobe() {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [hoveredAgent, setHoveredAgent] = useState<Agent | null>(null);
   const [connections, setConnections] = useState<SemanticConnection[]>([]);
+  const [conflictData, setConflictData] = useState<ConflictData | null>(null);
   const [showLanguageThreads, setShowLanguageThreads] = useState(false);
   const [activeAlliances, setActiveAlliances] = useState<Set<string>>(new Set());
   const [paletteIndex, setPaletteIndex] = useState(() =>
@@ -70,6 +80,13 @@ export default function CultureGlobe() {
     fetch("/data/countries-enriched.geojson")
       .then((res) => res.json())
       .then((data: CountryCollection) => setCountries(data.features));
+  }, []);
+
+  useEffect(() => {
+    fetch("/data/acled-conflicts.json")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: ConflictData | null) => setConflictData(data))
+      .catch(() => setConflictData(null));
   }, []);
 
   useEffect(() => {
@@ -159,9 +176,14 @@ export default function CultureGlobe() {
       if (palette.heatmap) {
         return heatColorFor(palette.heatmap, f.properties);
       }
+      if (palette.id === "conflict") {
+        const conflict = conflictData?.countries[f.properties.iso2];
+        if (!conflict) return palette.base;
+        return hexToRgba(SEVERITY_COLOR[conflict.severity], 0.6);
+      }
       return palette.base;
     },
-    [hoveredCountry, selectedIso2, activeLanguage, activeContinent, palette]
+    [hoveredCountry, selectedIso2, activeLanguage, activeContinent, palette, conflictData]
   );
 
   const altitude = useCallback(
@@ -490,6 +512,20 @@ export default function CultureGlobe() {
             </span>
           </div>
         )}
+
+        {palette.id === "conflict" && (
+          <div className="pointer-events-none flex items-center gap-3 rounded-full border border-white/10 bg-[#070a14]/80 px-3 py-1.5 backdrop-blur-md">
+            {(["low", "medium", "high"] as const).map((tier) => (
+              <span key={tier} className="flex items-center gap-1.5 font-mono text-[9px] text-zinc-400">
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ background: SEVERITY_COLOR[tier] }}
+                />
+                {tier}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       <CulturePanel
@@ -502,6 +538,11 @@ export default function CultureGlobe() {
         onSelectLanguage={openLanguage}
         onSelectCountryFromList={handleCountryClick}
         onClose={backToIdle}
+        conflict={
+          panel.kind === "country"
+            ? (conflictData?.countries[panel.country.properties.iso2] ?? null)
+            : null
+        }
       />
 
       {panel.kind === "idle" && (
