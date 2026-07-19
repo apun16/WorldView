@@ -5,7 +5,7 @@ import type { CountryInfo } from "@/lib/country-index";
 import type { AgentIdentity } from "@/lib/agents";
 import type { DestinationId } from "@/lib/destinations";
 import type { LocalTime } from "@/lib/local-time";
-import type { DialogueBeat, WalkScript } from "@/lib/walk/walk-script";
+import type { WalkScript } from "@/lib/walk/walk-script";
 import { WalkEngine, type WalkPhase } from "@/components/walk/walk-engine";
 import { LookControls } from "@/components/walk/look-controls";
 import WalkOverlay from "@/components/walk/walk-overlay";
@@ -54,7 +54,6 @@ export default function WalkExperience({
 
   const [phase, setPhase] = useState<WalkPhase>("arriving");
   const [stopIndex, setStopIndex] = useState(0);
-  const [beat, setBeat] = useState<DialogueBeat | null>(null);
   const [presenting, setPresenting] = useState(false);
   const [gyroOn, setGyroOn] = useState(false);
   const [photoSource, setPhotoSource] = useState<string | null>(null);
@@ -74,11 +73,11 @@ export default function WalkExperience({
 
     const engine = new WalkEngine(
       element,
-      { country, guide, script, accentColor },
+      { country, guide, script, accentColor, skipScriptedBeats: true },
       {
         onPhase: setPhase,
         onStop: setStopIndex,
-        onBeat: setBeat,
+        onBeat: () => {},
         onXRChange: setPresenting,
         onPhotoSource: setPhotoSource,
       }
@@ -123,6 +122,10 @@ export default function WalkExperience({
 
   const advance = useCallback(() => engineRef.current?.advance(), []);
 
+  const showScene = useCallback((stop: DestinationId) => {
+    return engineRef.current?.goToDestination(stop) ?? false;
+  }, []);
+
   const enableGyro = useCallback(async () => {
     if (await engineRef.current?.enableGyro()) setGyroOn(true);
   }, []);
@@ -152,7 +155,6 @@ export default function WalkExperience({
         stops={stops}
         stopIndex={stopIndex}
         phase={phase}
-        beat={beat}
         hidden={presenting}
         showGyro={gyroSupported && !gyroOn}
         onAdvance={advance}
@@ -162,16 +164,18 @@ export default function WalkExperience({
             ? (streetCredit ?? "Mapillary contributor")
             : null
         }
+        teaching={
+          !presenting ? (
+            <WalkVoice
+              country={country}
+              guide={guide}
+              stops={stops}
+              localTime={localTime}
+              onShowScene={showScene}
+            />
+          ) : null
+        }
       />
-
-      {!presenting && (
-        <WalkVoice
-          country={country}
-          guide={guide}
-          stops={stops}
-          localTime={localTime}
-        />
-      )}
     </main>
   );
 }

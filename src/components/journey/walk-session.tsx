@@ -19,6 +19,7 @@ import {
   locationPhrase,
   resolveSceneId,
 } from "@/lib/walk-variables";
+import { stripAudioTags } from "@/lib/elevenlabs-transcript";
 
 type WalkSessionProps = {
   country: CountryInfo;
@@ -70,12 +71,13 @@ function WalkSessionInner({
   );
 
   const appendLine = useCallback((role: string, text: string) => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
+    const cleaned =
+      role === "guide" ? stripAudioTags(text) : text.trim();
+    if (!cleaned) return;
     setLines((prev) => {
       const last = prev[prev.length - 1];
-      if (last && last.role === role && last.text === trimmed) return prev;
-      return [...prev.slice(-40), { role, text: trimmed }];
+      if (last && last.role === role && last.text === cleaned) return prev;
+      return [...prev.slice(-40), { role, text: cleaned }];
     });
   }, []);
 

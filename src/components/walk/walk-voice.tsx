@@ -16,17 +16,18 @@ import {
   locationPhrase,
   resolveSceneId,
 } from "@/lib/walk-variables";
+import { stripAudioTags } from "@/lib/elevenlabs-transcript";
 
 type WalkVoiceProps = {
   country: CountryInfo;
   guide: AgentIdentity;
   stops: DestinationId[];
   localTime: LocalTime;
+  /** Move the 3D photosphere when the agent calls show_scene. */
+  onShowScene?: (stop: DestinationId) => boolean;
 };
 
-/** Live voice companion for the 3D walk — sits alongside the scripted
- *  advance-by-button scene, so you can talk to the guide about wherever
- *  you currently are while still driving the walk yourself. */
+/** Live ElevenLabs teaching panel for the 3D walk (center-bottom). */
 export default function WalkVoice(props: WalkVoiceProps) {
   return (
     <ConversationProvider
@@ -37,7 +38,13 @@ export default function WalkVoice(props: WalkVoiceProps) {
   );
 }
 
-function WalkVoiceInner({ country, guide, stops, localTime }: WalkVoiceProps) {
+function WalkVoiceInner({
+  country,
+  guide,
+  stops,
+  localTime,
+  onShowScene,
+}: WalkVoiceProps) {
   const conversation = useConversation();
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
@@ -47,26 +54,27 @@ function WalkVoiceInner({ country, guide, stops, localTime }: WalkVoiceProps) {
   const connected = conversation.status === "connected";
   const connecting = conversation.status === "connecting" || starting;
 
-  // Agent calls this to acknowledge where it thinks you are; the scripted
-  // walk still drives actual scene changes via the "walk to X" button.
   useConversationClientTool(
     "show_scene",
     (parameters: { scene_id?: string; location?: string }) => {
       const raw = parameters.scene_id ?? parameters.location ?? "";
       const next = resolveSceneId(raw, stops);
-      return next
+      if (!next) return `Unknown scene "${raw}" — staying put`;
+      const moved = onShowScene?.(next) ?? false;
+      return moved
         ? `Now at ${locationPhrase(next)}`
-        : `Unknown scene "${raw}" — staying put`;
+        : `Already at ${locationPhrase(next)} (or still walking)`;
     }
   );
 
   const appendLine = useCallback((role: string, text: string) => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
+    const cleaned =
+      role === "guide" ? stripAudioTags(text) : text.trim();
+    if (!cleaned) return;
     setLines((prev) => {
       const last = prev[prev.length - 1];
-      if (last && last.role === role && last.text === trimmed) return prev;
-      return [...prev.slice(-40), { role, text: trimmed }];
+      if (last && last.role === role && last.text === cleaned) return prev;
+      return [...prev.slice(-40), { role, text: cleaned }];
     });
   }, []);
 
@@ -85,10 +93,15 @@ function WalkVoiceInner({ country, guide, stops, localTime }: WalkVoiceProps) {
         throw new Error(body?.error ?? "Could not start the voice guide");
       }
 
-      const { signedUrl, userId } = (await res.json()) as {
-        signedUrl: string;
+      const bodyJson = (await res.json()) as {
+        token?: string;
         userId?: string;
       };
+      const { token, userId } = bodyJson;
+
+      if (!token) {
+        throw new Error("No conversation token returned");
+      }
 
       const dynamicVariables = buildWalkDynamicVariables({
         country,
@@ -99,10 +112,11 @@ function WalkVoiceInner({ country, guide, stops, localTime }: WalkVoiceProps) {
       });
 
       conversation.startSession({
-        signedUrl,
-        connectionType: "websocket",
+        conversationToken: token,
+        connectionType: "webrtc",
         userId,
         dynamicVariables,
+        onConnect: () => setStarting(false),
         onMessage: ({ message, role }) => {
           appendLine(role === "agent" ? "guide" : "you", message);
         },
@@ -112,36 +126,55 @@ function WalkVoiceInner({ country, guide, stops, localTime }: WalkVoiceProps) {
       const message =
         err instanceof Error ? err.message : "Could not start the voice guide";
       setError(message);
-    } finally {
       setStarting(false);
     }
   };
 
   const endVoice = () => conversation.endSession();
+  const latestGuide = [...lines].reverse().find((l) => l.role === "guide");
 
   return (
-    <div className="pointer-events-auto absolute bottom-5 left-5 z-20 w-72 max-w-[calc(100vw-2.5rem)] sm:left-8">
-      <div className="rounded-xl border border-white/10 bg-[#070a14]/88 p-4 backdrop-blur-md">
-        <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-zinc-500">
-          voice guide · {language.displayName}
+    <div className="pointer-events-auto w-full max-w-xl">
+      <div className="rounded-2xl border border-white/10 bg-[#05070d]/88 p-5 backdrop-blur">
+        <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-sky-300/70">
+          {guide.name} · {language.displayName}
         </p>
 
         {error && (
           <p className="mt-2 font-mono text-xs text-rose-300/90">{error}</p>
         )}
 
-        <div className="mt-3 flex flex-wrap gap-2">
-          {!connected ? (
+        {!connected ? (
+          <div className="mt-3">
+            <p className="text-sm leading-relaxed text-zinc-300">
+              Talk with {guide.name} as you walk — they&apos;ll teach as you go.
+            </p>
             <button
               type="button"
               onClick={startVoice}
               disabled={connecting}
-              className="rounded-full bg-sky-400/90 px-4 py-2 font-mono text-[11px] text-[#05070d] transition-colors hover:bg-sky-300 disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-4 rounded-full bg-sky-400/90 px-5 py-2.5 font-mono text-xs text-[#05070d] transition-colors hover:bg-sky-300 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {connecting ? "connecting…" : `talk to ${guide.name}`}
+              {connecting ? "connecting…" : `start talking with ${guide.name}`}
             </button>
-          ) : (
-            <>
+          </div>
+        ) : (
+          <>
+            {latestGuide ? (
+              <p className="mt-3 text-base leading-relaxed text-zinc-100">
+                {latestGuide.text}
+              </p>
+            ) : (
+              <p className="mt-3 font-mono text-[11px] text-zinc-500">
+                {conversation.isSpeaking
+                  ? `${guide.name} is speaking…`
+                  : conversation.isListening
+                    ? "listening — your turn"
+                    : "connected"}
+              </p>
+            )}
+
+            <div className="mt-4 flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={endVoice}
@@ -156,31 +189,28 @@ function WalkVoiceInner({ country, guide, stops, localTime }: WalkVoiceProps) {
               >
                 {conversation.isMuted ? "unmute" : "mute"}
               </button>
-            </>
-          )}
-        </div>
+              <span className="self-center font-mono text-[10px] text-zinc-500">
+                {conversation.isSpeaking
+                  ? `${guide.name} speaking…`
+                  : conversation.isListening
+                    ? "your turn"
+                    : "connected"}
+              </span>
+            </div>
 
-        {connected && (
-          <p className="mt-3 font-mono text-[10px] text-zinc-500">
-            {conversation.isSpeaking
-              ? `${guide.name} is speaking…`
-              : conversation.isListening
-                ? "listening — your turn"
-                : "connected"}
-          </p>
-        )}
-
-        {lines.length > 0 && (
-          <ul className="mt-3 max-h-40 space-y-1.5 overflow-y-auto border-t border-white/5 pt-3">
-            {lines.slice(-6).map((line, i) => (
-              <li key={`${i}-${line.role}`} className="text-xs">
-                <span className="font-mono text-[9px] uppercase tracking-wider text-zinc-600">
-                  {line.role === "guide" ? guide.name : "you"}
-                </span>
-                <p className="text-zinc-300">{line.text}</p>
-              </li>
-            ))}
-          </ul>
+            {lines.length > 1 && (
+              <ul className="mt-4 max-h-28 space-y-1.5 overflow-y-auto border-t border-white/5 pt-3">
+                {lines.slice(-5, -1).map((line, i) => (
+                  <li key={`${i}-${line.role}`} className="text-xs">
+                    <span className="font-mono text-[9px] uppercase tracking-wider text-zinc-600">
+                      {line.role === "guide" ? guide.name : "you"}
+                    </span>
+                    <p className="text-zinc-400">{line.text}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
         )}
       </div>
     </div>

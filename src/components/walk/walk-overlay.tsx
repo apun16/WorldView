@@ -1,7 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
-import type { DialogueBeat } from "@/lib/walk/walk-script";
 import type { WalkPhase } from "@/components/walk/walk-engine";
 import { findDestination, type DestinationId } from "@/lib/destinations";
 
@@ -11,19 +11,18 @@ export default function WalkOverlay({
   stops,
   stopIndex,
   phase,
-  beat,
   hidden,
   showGyro,
   onAdvance,
   onEnableGyro,
   photoCredit,
+  teaching,
 }: {
   guideName: string;
   countryIso2: string;
   stops: DestinationId[];
   stopIndex: number;
   phase: WalkPhase;
-  beat: DialogueBeat | null;
   /** True in immersive XR, where the in-world panel takes over. */
   hidden: boolean;
   showGyro: boolean;
@@ -31,6 +30,8 @@ export default function WalkOverlay({
   onEnableGyro: () => void;
   /** Shown when a CC BY-SA image is on screen; the licence requires it. */
   photoCredit?: string | null;
+  /** Live ElevenLabs teaching UI — replaces the old scripted scenery box. */
+  teaching?: ReactNode;
 }) {
   if (hidden) return null;
 
@@ -82,27 +83,8 @@ export default function WalkOverlay({
         </p>
       )}
 
-      <div className="flex flex-col items-center gap-4">
-        {beat && (
-          <div className="pointer-events-auto w-full max-w-xl rounded-2xl border border-white/10 bg-[#05070d]/88 p-5 backdrop-blur">
-            <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-sky-300/70">
-              {guideName}
-            </p>
-            <p className="mt-2 text-base leading-relaxed text-zinc-100">{beat.text}</p>
-
-            {beat.word && (
-              <div className="mt-4 rounded-xl border border-amber-300/25 bg-amber-300/[0.07] px-4 py-3">
-                <p className="font-serif text-2xl text-amber-200">{beat.word.term}</p>
-                {beat.word.roman && (
-                  <p className="mt-0.5 font-mono text-xs italic text-amber-200/70">
-                    {beat.word.roman}
-                  </p>
-                )}
-                <p className="mt-1 text-sm text-zinc-400">{beat.word.gloss}</p>
-              </div>
-            )}
-          </div>
-        )}
+      <div className="flex w-full flex-col items-center gap-4">
+        {teaching}
 
         {phase === "complete" ? (
           <div className="pointer-events-auto flex flex-col items-center gap-3">

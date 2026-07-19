@@ -26,6 +26,8 @@ export type WalkConfig = {
   script: WalkScript;
   accentColor: string;
   createGuide?: CreateGuide;
+  /** When true, skip canned dialogue beats — ElevenLabs drives teaching. */
+  skipScriptedBeats?: boolean;
 };
 
 const EYE_HEIGHT = 1.6;
@@ -221,12 +223,34 @@ export class WalkEngine {
   }
 
   private pendingComplete = false;
+  private pendingGoTo: number | null = null;
 
   private startSpeaking() {
+    if (this.config.skipScriptedBeats) {
+      this.guide.setState("idle");
+      this.setPhase("ready");
+      this.emitBeat(null);
+      return;
+    }
     this.setPhase("speaking");
     const beats = this.config.script.stops[this.stopIndex].beats;
     this.beatIndex = 0;
     this.emitBeat(beats[0] ?? null);
+  }
+
+  /** Agent `show_scene` — fade to a stop on the planned route. */
+  goToDestination(destination: string): boolean {
+    const index = this.config.script.stops.findIndex(
+      (s) => s.destination === destination
+    );
+    if (index < 0 || index === this.stopIndex) return false;
+    if (this.phase === "leaving" || this.phase === "arriving") return false;
+    this.pendingComplete = false;
+    this.pendingGoTo = index;
+    this.guide.setState("walking");
+    this.setPhase("leaving");
+    this.fadeDirection = 1;
+    return true;
   }
 
   private frame = (time: number) => {
@@ -264,11 +288,14 @@ export class WalkEngine {
       if (t >= 1 && this.fadeLevel >= 1) {
         if (this.pendingComplete) {
           this.pendingComplete = false;
+          this.pendingGoTo = null;
           this.setPhase("complete");
           this.emitBeat(null);
           this.fadeDirection = -1;
         } else {
-          this.enterStop(this.stopIndex + 1);
+          const next = this.pendingGoTo ?? this.stopIndex + 1;
+          this.pendingGoTo = null;
+          this.enterStop(next);
         }
       }
     }

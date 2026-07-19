@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
+import dns from "node:dns";
 import { auth0 } from "@/lib/auth0";
+
+// Prefer IPv4 — some networks hang on the AAAA path to api.elevenlabs.io.
+dns.setDefaultResultOrder("ipv4first");
 
 /**
  * Mint a short-lived WebRTC conversation token for a private ElevenLabs voice agent.
@@ -27,10 +31,23 @@ export async function GET() {
   );
   url.searchParams.set("agent_id", agentId);
 
-  const response = await fetch(url, {
-    headers: { "xi-api-key": apiKey },
-    cache: "no-store",
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      headers: { "xi-api-key": apiKey },
+      cache: "no-store",
+      signal: AbortSignal.timeout(20_000),
+    });
+  } catch (err) {
+    console.error("ElevenLabs token network error", err);
+    return NextResponse.json(
+      {
+        error:
+          "Could not reach ElevenLabs (network timeout). Check your connection or VPN and try again.",
+      },
+      { status: 502 }
+    );
+  }
 
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
