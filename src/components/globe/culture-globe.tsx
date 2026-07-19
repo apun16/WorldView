@@ -7,7 +7,7 @@ import type { GlobeMethods } from "react-globe.gl";
 import type { CountryCollection, CountryFeature, SemanticConnection } from "@/lib/geo-types";
 import CulturePanel from "@/components/globe/culture-panel";
 import ConnectionTicker from "@/components/globe/connection-ticker";
-import { GLOBE_PALETTES } from "@/lib/globe-palettes";
+import { GLOBE_PALETTES, heatColorFor, scaleToGradient } from "@/lib/globe-palettes";
 import PaletteSlider from "@/components/globe/palette-slider";
 import CountrySearch from "@/components/globe/country-search";
 import {
@@ -44,7 +44,7 @@ export default function CultureGlobe() {
   const [panel, setPanel] = useState<PanelView>({ kind: "idle" });
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [hoveredAgent, setHoveredAgent] = useState<Agent | null>(null);
-  const [paletteIndex, setPaletteIndex] = useState(2);
+  const [paletteIndex, setPaletteIndex] = useState(0);
   const [connections, setConnections] = useState<SemanticConnection[]>([]);
   const palette = GLOBE_PALETTES[paletteIndex];
 
@@ -133,6 +133,11 @@ export default function CultureGlobe() {
       }
       if (activeContinent && f.properties.continent === activeContinent) {
         return palette.continentGlow;
+      }
+      // Data views (climate, language diversity) colour each country by its
+      // metric; the plain earth palette uses one flat base.
+      if (palette.heatmap) {
+        return heatColorFor(palette.heatmap, f.properties);
       }
       return palette.base;
     },
@@ -345,11 +350,30 @@ export default function CultureGlobe() {
 
       <ConnectionTicker connections={arcsData} />
 
-      <PaletteSlider
-        palettes={GLOBE_PALETTES}
-        index={paletteIndex}
-        onChange={setPaletteIndex}
-      />
+      <div className="absolute left-1/2 top-5 z-10 flex -translate-x-1/2 flex-col items-center">
+        <PaletteSlider
+          palettes={GLOBE_PALETTES}
+          index={paletteIndex}
+          onChange={setPaletteIndex}
+        />
+
+        {palette.heatmap && (
+          <div className="pointer-events-none flex items-center gap-2 rounded-full border border-white/10 bg-[#070a14]/80 px-3 py-1.5 backdrop-blur-md">
+            <span className="font-mono text-[9px] text-zinc-400">
+              {palette.heatmap.legend.low}
+            </span>
+            <span
+              className="h-1.5 w-28 rounded-full"
+              style={{
+                background: `linear-gradient(to right, ${scaleToGradient(palette.heatmap.scale)})`,
+              }}
+            />
+            <span className="font-mono text-[9px] text-zinc-400">
+              {palette.heatmap.legend.high}
+            </span>
+          </div>
+        )}
+      </div>
 
       <CountrySearch countries={countries} onSelect={handleCountryClick} />
 

@@ -12,7 +12,7 @@ export default function PaletteSlider({
   onChange: (index: number) => void;
 }) {
   return (
-    <div className="pointer-events-auto absolute left-1/2 top-5 z-10 flex -translate-x-1/2 flex-col items-center gap-1.5 rounded-lg border border-white/10 bg-[#070a14]/80 px-4 py-2.5 backdrop-blur-md">
+    <div className="pointer-events-auto flex flex-col items-center gap-1.5 rounded-lg border border-white/10 bg-[#070a14]/80 px-4 py-2.5 backdrop-blur-md">
       <span className="font-mono text-[10px] tracking-widest text-zinc-400">
         {palettes[index].name}
       </span>
