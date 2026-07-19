@@ -70,4 +70,22 @@ export const GLOBE_PALETTES: GlobePalette[] = [
     globeEmissive: "#0a0402",
     side: "rgba(24, 13, 6, 0.55)",
   },
+  {
+    id: "dusk",
+    name: "Golden Dusk",
+    base: "rgba(245, 185, 113, 0.16)",
+    hover: "rgba(253, 216, 165, 0.9)",
+    selected: "rgba(238, 138, 107, 0.85)",
+    languageMatch: "rgba(233, 196, 106, 0.75)",
+    continentGlow: "rgba(238, 138, 107, 0.25)",
+    stroke: "rgba(253, 224, 191, 0.32)",
+    atmosphere: "#f5a56f",
+    globeColor: "#1a1226",
+    globeEmissive: "#0d0815",
+    side: "rgba(26, 18, 38, 0.55)",
+  },
 ];
+
+/** The palette the app currently ships with. */
+export const ACTIVE_PALETTE =
+  GLOBE_PALETTES.find((p) => p.id === "dusk") ?? GLOBE_PALETTES[0];

@@ -16,6 +16,7 @@ export default function WalkOverlay({
   showGyro,
   onAdvance,
   onEnableGyro,
+  photoCredit,
 }: {
   guideName: string;
   countryIso2: string;
@@ -28,6 +29,8 @@ export default function WalkOverlay({
   showGyro: boolean;
   onAdvance: () => void;
   onEnableGyro: () => void;
+  /** Shown when a CC BY-SA image is on screen; the licence requires it. */
+  photoCredit?: string | null;
 }) {
   if (hidden) return null;
 
@@ -72,6 +75,12 @@ export default function WalkOverlay({
           </Link>
         </div>
       </div>
+
+      {photoCredit && (
+        <p className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 text-[10px] text-white/35">
+          360° photo © {photoCredit} · Mapillary · CC BY-SA
+        </p>
+      )}
 
       <div className="flex flex-col items-center gap-4">
         {beat && (

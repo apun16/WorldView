@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import type { CountryInfo } from "@/lib/country-index";
 import type { AgentIdentity } from "@/lib/agents";
-import type { LocalTime } from "@/lib/local-time";
 import type { DialogueBeat, WalkScript } from "@/lib/walk/walk-script";
 import { scenePalette } from "@/lib/walk/scene-palette";
 import { Photosphere } from "@/components/walk/photosphere";
@@ -17,13 +16,14 @@ export type WalkHandlers = {
   onStop(index: number): void;
   onBeat(beat: DialogueBeat | null): void;
   onXRChange(presenting: boolean): void;
+  /** The photosphere URL now on screen, or null when using the fallback sky. */
+  onPhotoSource(url: string | null): void;
 };
 
 export type WalkConfig = {
   country: CountryInfo;
   guide: AgentIdentity;
   script: WalkScript;
-  localTime: LocalTime;
   accentColor: string;
   createGuide?: CreateGuide;
 };
@@ -126,6 +126,8 @@ export class WalkEngine {
       this.fadeSphere
     );
 
+    this.photosphere.onResolved = (url) => this.handlers.onPhotoSource(url);
+
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(container);
 
@@ -146,7 +148,7 @@ export class WalkEngine {
 
   private currentPalette() {
     const stop = this.config.script.stops[this.stopIndex] ?? this.config.script.stops[0];
-    return scenePalette(stop.destination, this.config.localTime.period);
+    return scenePalette(stop.destination);
   }
 
   private enterStop(index: number) {
@@ -159,7 +161,6 @@ export class WalkEngine {
     this.photosphere.show(
       this.config.country,
       stop.destination,
-      this.config.localTime.period,
       this.renderer.capabilities.maxTextureSize
     );
 

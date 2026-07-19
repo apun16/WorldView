@@ -1,5 +1,6 @@
 import type { CountryInfo } from "@/lib/country-index";
 import type { DestinationId } from "@/lib/destinations";
+import { mapillaryHit } from "@/lib/walk/mapillary-coverage";
 
 // Photosphere selection driven by where the journey actually is. Without this
 // every country renders the same generic photo, and the environment stops
@@ -93,14 +94,28 @@ export function photospherePaths(
     `_region/${area}/${destination}.jpg`,
   ];
 
+  // Mapillary is real imagery of this actual country, so it outranks every
+  // regional approximation. It sits below a hand-placed country file, which is
+  // curated and therefore better still.
+  //
+  // Gated on harvested coverage so the 63 countries with no 360 imagery never
+  // issue a request that is already known to fail.
+  const live =
+    destination === "street" && mapillaryHit(country.iso2)
+      ? [`/api/street-photo?iso2=${iso2.toUpperCase()}`]
+      : [];
+
   const middle =
     destination === "nature"
       ? [`_climate/${climate}/nature.jpg`, ...built]
       : [...built, `_climate/${climate}/${destination}.jpg`];
 
-  return [
+  const staticPaths = [
     `${iso2}/${destination}.jpg`,
     ...middle,
     `_default/${destination}.jpg`,
   ].map((path) => `/scenes/xr/${path}`);
+
+  // Country file first (curated), then live Mapillary, then the approximations.
+  return [staticPaths[0], ...live, ...staticPaths.slice(1)];
 }

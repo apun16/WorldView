@@ -1,6 +1,5 @@
 import * as THREE from "three";
 import type { DestinationId } from "@/lib/destinations";
-import type { TimeOfDay } from "@/lib/local-time";
 import { scenePalette, type ScenePalette } from "@/lib/walk/scene-palette";
 import { seededRandom } from "@/lib/seeded-random";
 import { withAlpha } from "@/lib/color";
@@ -18,14 +17,13 @@ const cache = new Map<string, THREE.CanvasTexture>();
 
 export function proceduralSky(
   iso2: string,
-  destination: DestinationId,
-  period: TimeOfDay
+  destination: DestinationId
 ): THREE.CanvasTexture {
-  const key = `${iso2}:${destination}:${period}`;
+  const key = `${iso2}:${destination}`;
   const cached = cache.get(key);
   if (cached) return cached;
 
-  const palette = scenePalette(destination, period);
+  const palette = scenePalette(destination);
   const canvas = document.createElement("canvas");
   canvas.width = WIDTH;
   canvas.height = HEIGHT;

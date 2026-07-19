@@ -1,9 +1,7 @@
 import * as THREE from "three";
 import type { DestinationId } from "@/lib/destinations";
 import type { CountryInfo } from "@/lib/country-index";
-import type { TimeOfDay } from "@/lib/local-time";
 import { proceduralSky } from "@/components/walk/procedural-sky";
-import { scenePalette } from "@/lib/walk/scene-palette";
 import { photospherePaths } from "@/lib/walk/scene-locale";
 
 // The environment sphere. Two meshes so a real photo can crossfade in over the
@@ -24,6 +22,8 @@ type Layer = {
 
 export class Photosphere {
   readonly group = new THREE.Group();
+  /** Called with the URL that actually rendered, or null for the fallback sky. */
+  onResolved: ((url: string | null) => void) | null = null;
   private base: Layer;
   private overlay: Layer;
   private fade = 0;
@@ -63,13 +63,12 @@ export class Photosphere {
   show(
     country: CountryInfo,
     destination: DestinationId,
-    period: TimeOfDay,
     maxTextureSize = Infinity
   ) {
     this.abort?.abort();
     this.abort = null;
 
-    this.setBaseTexture(proceduralSky(country.iso2, destination, period), false);
+    this.setBaseTexture(proceduralSky(country.iso2, destination), false);
     this.overlay.mesh.visible = false;
     this.overlay.material.opacity = 0;
     this.fading = false;
@@ -84,10 +83,10 @@ export class Photosphere {
       return;
     }
 
-    this.loadPhoto(country, destination, period);
+    this.loadPhoto(country, destination);
   }
 
-  private loadPhoto(country: CountryInfo, destination: DestinationId, period: TimeOfDay) {
+  private loadPhoto(country: CountryInfo, destination: DestinationId) {
     const controller = new AbortController();
     this.abort = controller;
     const timeout = setTimeout(() => controller.abort(), LOAD_TIMEOUT_MS);
@@ -96,6 +95,7 @@ export class Photosphere {
     const tryNext = (index: number) => {
       if (index >= candidates.length) {
         clearTimeout(timeout);
+        this.onResolved?.(null);
         // Expected: most countries have no photo. Stay procedural, silently.
         console.debug(`[walk] no photosphere for ${country.iso2}/${destination}, using procedural sky`);
         return;
@@ -122,16 +122,10 @@ export class Photosphere {
           texture.minFilter = THREE.LinearFilter;
           texture.generateMipmaps = false;
 
-          // Tint toward the local time of day, so one daylight photo can still
-          // read as evening in Lima.
-          const palette = scenePalette(destination, period);
-          this.overlay.material.color
-            .set(palette.haze)
-            .lerp(new THREE.Color("#ffffff"), 0.72);
-
           this.swapOverlayTexture(texture, true);
           this.overlay.mesh.visible = true;
           this.fading = true;
+          this.onResolved?.(candidates[index]);
         },
         undefined,
         () => tryNext(index + 1)

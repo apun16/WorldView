@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { CountryInfo } from "@/lib/country-index";
 import type { AgentIdentity } from "@/lib/agents";
-import type { LocalTime } from "@/lib/local-time";
 import type { DestinationId } from "@/lib/destinations";
 import type { DialogueBeat, WalkScript } from "@/lib/walk/walk-script";
 import { WalkEngine, type WalkPhase } from "@/components/walk/walk-engine";
@@ -34,15 +33,16 @@ export default function WalkExperience({
   guide,
   stops,
   script,
-  localTime,
   accentColor,
+  streetCredit,
 }: {
   country: CountryInfo;
   guide: AgentIdentity;
   stops: DestinationId[];
   script: WalkScript;
-  localTime: LocalTime;
   accentColor: string;
+  /** Mapillary photographer, credited when their image is on screen (CC BY-SA). */
+  streetCredit?: string | null;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<WalkEngine | null>(null);
@@ -52,6 +52,7 @@ export default function WalkExperience({
   const [beat, setBeat] = useState<DialogueBeat | null>(null);
   const [presenting, setPresenting] = useState(false);
   const [gyroOn, setGyroOn] = useState(false);
+  const [photoSource, setPhotoSource] = useState<string | null>(null);
 
   // Assume supported on the server so the markup matches, then correct on the
   // client before the engine is ever constructed.
@@ -68,12 +69,13 @@ export default function WalkExperience({
 
     const engine = new WalkEngine(
       element,
-      { country, guide, script, localTime, accentColor },
+      { country, guide, script, accentColor },
       {
         onPhase: setPhase,
         onStop: setStopIndex,
         onBeat: setBeat,
         onXRChange: setPresenting,
+        onPhotoSource: setPhotoSource,
       }
     );
     engineRef.current = engine;
@@ -101,7 +103,7 @@ export default function WalkExperience({
       engine.dispose();
       engineRef.current = null;
     };
-  }, [country, guide, script, localTime, accentColor, webglSupported]);
+  }, [country, guide, script, accentColor, webglSupported]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -150,6 +152,11 @@ export default function WalkExperience({
         showGyro={gyroSupported && !gyroOn}
         onAdvance={advance}
         onEnableGyro={enableGyro}
+        photoCredit={
+          photoSource?.startsWith("/api/street-photo")
+            ? (streetCredit ?? "Mapillary contributor")
+            : null
+        }
       />
     </main>
   );

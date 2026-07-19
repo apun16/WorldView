@@ -1,5 +1,4 @@
 import type { DestinationId } from "@/lib/destinations";
-import type { TimeOfDay } from "@/lib/local-time";
 import { mixHex } from "@/lib/color";
 
 export type ScenePalette = {
@@ -20,75 +19,20 @@ export type ScenePalette = {
   sunX: number;
 };
 
-// Time of day sets the light; the destination shifts the ground and the
-// silhouette. Splitting it this way means 6 time palettes and 5 destination
-// accents rather than 30 hand-authored combinations.
-const TIME_PALETTES: Record<
-  TimeOfDay,
-  Omit<ScenePalette, "ground" | "silhouette"> & { groundBase: string }
-> = {
-  dawn: {
-    zenith: "#1b2450",
-    horizon: "#f0a878",
-    sun: "#ffd9a0",
-    haze: "#c99b86",
-    groundBase: "#2a2536",
-    ambientIntensity: 0.55,
-    sunIntensity: 0.6,
-    sunX: 0.12,
-  },
-  morning: {
-    zenith: "#2f6fb5",
-    horizon: "#bcd9ef",
-    sun: "#fff6dc",
-    haze: "#9fc0dc",
-    groundBase: "#4a4a44",
-    ambientIntensity: 0.85,
-    sunIntensity: 0.9,
-    sunX: 0.28,
-  },
-  midday: {
-    zenith: "#2477c4",
-    horizon: "#d7ecfb",
-    sun: "#ffffff",
-    haze: "#b8d4e8",
-    groundBase: "#5a5850",
-    ambientIntensity: 1.0,
-    sunIntensity: 1.0,
-    sunX: 0.5,
-  },
-  afternoon: {
-    zenith: "#3a72ae",
-    horizon: "#f2d9ab",
-    sun: "#ffe9b8",
-    haze: "#cbb493",
-    groundBase: "#544a3c",
-    ambientIntensity: 0.9,
-    sunIntensity: 0.85,
-    sunX: 0.7,
-  },
-  evening: {
-    zenith: "#241a44",
-    horizon: "#e2743f",
-    sun: "#ffbe72",
-    haze: "#9c6a55",
-    groundBase: "#2c2430",
-    ambientIntensity: 0.5,
-    sunIntensity: 0.5,
-    sunX: 0.88,
-  },
-  night: {
-    // Matches the app background in layout.tsx so the walk feels continuous
-    // with the rest of the product at night.
-    zenith: "#05070d",
-    horizon: "#16203a",
-    sun: "#cdd8f0",
-    haze: "#101828",
-    groundBase: "#12141c",
-    ambientIntensity: 0.28,
-    sunIntensity: 0.22,
-    sunX: 0.62,
-  },
+// Scenes always render in good daylight. Time-of-day lighting existed here and
+// was removed deliberately: every sourced photosphere is a daylight photograph,
+// so an evening or night walk meant grading a bright photo down until the place
+// was simply hard to look at, which is a worse experience than a small
+// inaccuracy about the local hour.
+const DAYLIGHT = {
+  zenith: "#2477c4",
+  horizon: "#d7ecfb",
+  sun: "#ffffff",
+  haze: "#b8d4e8",
+  groundBase: "#5a5850",
+  ambientIntensity: 1.0,
+  sunIntensity: 1.0,
+  sunX: 0.5,
 };
 
 const DESTINATION_ACCENTS: Record<
@@ -102,26 +46,22 @@ const DESTINATION_ACCENTS: Record<
   street: { ground: "#4c4c50", silhouette: "#1a1b20" },
 };
 
-export function scenePalette(
-  destination: DestinationId,
-  period: TimeOfDay
-): ScenePalette {
-  const time = TIME_PALETTES[period];
+export function scenePalette(destination: DestinationId): ScenePalette {
   const accent = DESTINATION_ACCENTS[destination];
 
-  // Pull the destination's ground and silhouette toward the time-of-day base so
-  // a market at night is dark earth rather than daylight earth on a dark sky.
-  const towardTime = period === "night" ? 0.66 : period === "evening" ? 0.4 : 0.2;
+  // Pull the destination's ground and silhouette slightly toward the daylight
+  // base so they sit in the same light as the sky.
+  const towardBase = 0.2;
 
   return {
-    zenith: time.zenith,
-    horizon: time.horizon,
-    sun: time.sun,
-    haze: time.haze,
-    ground: mixHex(accent.ground, time.groundBase, towardTime),
-    silhouette: mixHex(accent.silhouette, time.zenith, towardTime * 0.5),
-    ambientIntensity: time.ambientIntensity,
-    sunIntensity: time.sunIntensity,
-    sunX: time.sunX,
+    zenith: DAYLIGHT.zenith,
+    horizon: DAYLIGHT.horizon,
+    sun: DAYLIGHT.sun,
+    haze: DAYLIGHT.haze,
+    ground: mixHex(accent.ground, DAYLIGHT.groundBase, towardBase),
+    silhouette: mixHex(accent.silhouette, DAYLIGHT.zenith, towardBase * 0.5),
+    ambientIntensity: DAYLIGHT.ambientIntensity,
+    sunIntensity: DAYLIGHT.sunIntensity,
+    sunX: DAYLIGHT.sunX,
   };
 }

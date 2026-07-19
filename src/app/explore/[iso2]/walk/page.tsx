@@ -2,10 +2,10 @@ import { notFound, redirect } from "next/navigation";
 import dynamic from "next/dynamic";
 import { findCountry } from "@/lib/country-index";
 import { findAgentIdentity } from "@/lib/agents";
-import { localTimeFromLongitude } from "@/lib/local-time";
 import { parseStopsParam } from "@/lib/walk/walk-plan";
 import { buildWalkScript } from "@/lib/walk/walk-script";
 import { GLOBE_PALETTES } from "@/lib/globe-palettes";
+import { findStreetPhoto } from "@/lib/mapillary";
 
 // The scene is client-only, like the globe.
 const WalkExperience = dynamic(() => import("@/components/walk/walk-experience"));
@@ -32,9 +32,12 @@ export default async function WalkPage({
   const stops = parseStopsParam(rawStops);
   if (!stops) redirect(`/explore/${country.iso2}/journey?guide=${agent.id}`);
 
-  const localTime = localTimeFromLongitude(country.lng);
   const language = lang ?? country.languages[0] ?? null;
-  const script = buildWalkScript(country, agent, stops, localTime, language);
+  const script = buildWalkScript(country, agent, stops, language);
+
+  // Resolved here so the photographer can be credited. Next dedupes this with
+  // the identical fetch inside /api/street-photo, so it is one upstream call.
+  const streetPhoto = stops.includes("street") ? await findStreetPhoto(country) : null;
 
   return (
     <WalkExperience
@@ -42,8 +45,8 @@ export default async function WalkPage({
       guide={agent}
       stops={stops}
       script={script}
-      localTime={localTime}
       accentColor={GLOBE_PALETTES[2].selected}
+      streetCredit={streetPhoto?.creator ?? null}
     />
   );
 }

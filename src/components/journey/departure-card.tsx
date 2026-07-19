@@ -22,33 +22,31 @@ export default function DepartureCard({
 }) {
   return (
     <div>
-      <h1 className="mt-2 font-serif text-3xl text-zinc-50">
+      <h1 className="mt-2 font-serif text-3xl text-cream">
         {guide.name} is ready
       </h1>
-      <p className="mt-2 text-sm text-zinc-400">
+      <p className="mt-2 text-sm text-cream/60">
         Your route through {country.name} is saved.
       </p>
 
-      <ol className="mt-8 flex flex-col gap-px overflow-hidden rounded-xl border border-white/10">
+      <ol className="mt-8 flex flex-col gap-px overflow-hidden rounded-2xl border border-cream/10">
         {stops.map((id, index) => {
           const destination = findDestination(id);
           if (!destination) return null;
           return (
             <li
               key={id}
-              className="flex items-center gap-4 bg-white/[0.03] px-4 py-3.5"
+              className="flex items-center gap-4 bg-cream/[0.03] px-4 py-3.5"
             >
-              <span className="font-mono text-xs text-sky-300/70">
-                {String(index + 1).padStart(2, "0")}
+              <span className="font-serif text-sm italic text-apricot/70">
+                {index + 1}
               </span>
-              <span className="font-mono text-lg text-zinc-500">
-                {destination.glyph}
-              </span>
+              <span className="text-lg text-cream/40">{destination.glyph}</span>
               <span>
-                <span className="block text-sm text-zinc-100">
+                <span className="block text-sm text-cream">
                   {destination.label}
                 </span>
-                <span className="mt-0.5 block text-xs text-zinc-500">
+                <span className="mt-0.5 block text-xs text-cream/45">
                   {destination.tagline}
                 </span>
               </span>
@@ -57,25 +55,25 @@ export default function DepartureCard({
         })}
       </ol>
 
-      <div className="mt-8 rounded-xl border border-white/10 bg-white/[0.03] p-5">
-        <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-zinc-500">
-          next
+      <div className="mt-8 rounded-2xl border border-cream/10 bg-cream/[0.03] p-5">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-cream/45">
+          Next
         </p>
-        <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+        <p className="mt-2 text-sm leading-relaxed text-cream/60">
           {guide.name} will meet you at the first stop and move between these
           places with you, teaching you words as you go.
         </p>
         <Link
           href={walkHref(country.iso2, guide.id, stops, language)}
-          className="mt-5 block w-full rounded-full bg-sky-400/90 px-4 py-2.5 text-center font-mono text-xs text-[#05070d] transition-colors hover:bg-sky-300"
+          className="mt-5 block w-full rounded-full bg-apricot px-4 py-2.5 text-center text-sm font-semibold text-dusk-deep transition-colors hover:bg-[#f8cb95]"
         >
-          enter the walk →
+          Enter the walk →
         </Link>
       </div>
 
       <Link
         href="/explore"
-        className="mt-8 inline-block font-mono text-xs text-zinc-500 underline decoration-zinc-700 underline-offset-4 transition-colors hover:text-zinc-300"
+        className="mt-8 inline-block text-xs text-cream/45 underline decoration-cream/20 underline-offset-4 transition-colors hover:text-cream/80"
       >
         plan another journey →
       </Link>

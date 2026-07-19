@@ -1,7 +1,6 @@
 import type { CountryInfo } from "@/lib/country-index";
 import type { AgentIdentity } from "@/lib/agents";
 import { findDestination, type DestinationId } from "@/lib/destinations";
-import type { LocalTime } from "@/lib/local-time";
 import { seededRandom } from "@/lib/seeded-random";
 import { vocabularyFor, type TaughtWord } from "@/lib/walk/vocabulary";
 
@@ -53,7 +52,6 @@ export function buildWalkScript(
   country: CountryInfo,
   guide: AgentIdentity,
   stops: DestinationId[],
-  localTime: LocalTime,
   language: string | null
 ): WalkScript {
   let resolvedLanguage: string | null = null;
@@ -66,7 +64,6 @@ export function buildWalkScript(
       country,
       guide,
       destination,
-      localTime,
       vocab,
       isFirst: index === 0,
       isLast: index === stops.length - 1,
@@ -80,7 +77,6 @@ function buildStop({
   country,
   guide,
   destination,
-  localTime,
   vocab,
   isFirst,
   isLast,
@@ -88,7 +84,6 @@ function buildStop({
   country: CountryInfo;
   guide: AgentIdentity;
   destination: DestinationId;
-  localTime: LocalTime;
   vocab: ReturnType<typeof vocabularyFor>;
   isFirst: boolean;
   isLast: boolean;
@@ -103,7 +98,7 @@ function buildStop({
 
   if (isFirst) {
     push({
-      text: `I'm ${guide.name}. It's ${localTime.label} here in ${country.capital} — ${localTime.mood}. Walk with me.`,
+      text: `I'm ${guide.name}. Welcome to ${country.capital} — walk with me.`,
       guideState: "speaking",
     });
     if (vocab) {
