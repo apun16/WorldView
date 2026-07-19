@@ -14,17 +14,50 @@ export function avatarPath(identity: AgentIdentity): string {
   return `/models/guides/${identity.gender}.glb`;
 }
 
-/** One clip per file, keyed by the state it plays for. */
-const ANIMATION_PATHS: Record<GuideState, string> = {
-  idle: "/models/animations/idle.glb",
-  walking: "/models/animations/walk.glb",
-  speaking: "/models/animations/talk.glb",
-  gesturing: "/models/animations/talk.glb",
-};
+/**
+ * Clip files authored for the avatar's own skeleton — Ready Player Me's
+ * animation library, which shares the RPM rig exactly.
+ *
+ * External clips are accepted under one strict rule: tracks must bind to the
+ * avatar's bones BY EXACT NAME. No renaming, no retargeting. There used to be
+ * a cross-rig retargeting layer here and it is gone deliberately — rigs that
+ * look like the same family still disagree about bone rest orientations (a
+ * nominally-Mixamo pair measured 131° apart at the shoulders), and every
+ * scheme we tried turned that mismatch into mangled limbs or a face-planted
+ * avatar. Exact-name binding cannot fail that way: a clip either drives the
+ * skeleton it was authored for, or it is rejected and the procedural guide
+ * stays.
+ */
+function animationPaths(identity: AgentIdentity): Record<string, string> {
+  const dir = `/models/animations/${identity.gender}`;
+  return {
+    idle: `${dir}/idle.glb`,
+    walking: `${dir}/walk.glb`,
+    speaking: `${dir}/talk.glb`,
+  };
+}
 
-// Ready Player Me avatars face +Z, which matches how followPath and the
-// face-the-user code orient the root. Flip to Math.PI if a model faces away.
-const MODEL_FACING_OFFSET = 0;
+/**
+ * Bones a clip must drive for it to be usable at all. A clip authored for a
+ * different skeleton binds none of these (its names carry a rig prefix); a
+ * clip for the right skeleton binds all of them even when it also carries
+ * tracks for optional bones this body lacks (fingertip ends, jaw, eyes).
+ */
+const CORE_BONES = [
+  "Hips",
+  "Spine",
+  "Head",
+  "LeftArm",
+  "RightArm",
+  "LeftUpLeg",
+  "RightUpLeg",
+];
+
+// Adult eye-ish height in metres. Sources disagree on units — Ready Player Me
+// exports at 1:1, Mixamo at 1:100 — and for a skinned mesh the raw accessor
+// bounds do not predict the rendered size anyway. Measuring after load and
+// normalising is the only thing that works across both.
+const TARGET_HEIGHT = 1.75;
 
 const CROSSFADE_SECONDS = 0.25;
 
@@ -41,7 +74,7 @@ export class GltfGuide implements GuideAvatar {
 
   constructor(model: THREE.Object3D, clips: Map<GuideState, THREE.AnimationClip>) {
     this.model = model;
-    model.rotation.y = MODEL_FACING_OFFSET;
+    faceForward(model);
     this.object.add(model);
 
     this.mixer = new THREE.AnimationMixer(model);
@@ -149,6 +182,7 @@ export async function loadGltfGuide(
   if (!avatar) return null;
 
   const model = avatar.scene;
+  normalizeHeight(model);
   model.traverse((child) => {
     const mesh = child as THREE.Mesh;
     if (!mesh.isMesh) return;
@@ -164,25 +198,37 @@ export async function loadGltfGuide(
   });
 
   const clips = new Map<GuideState, THREE.AnimationClip>();
-
-  // Clips bundled inside the avatar itself take priority.
-  for (const [state, path] of Object.entries(ANIMATION_PATHS) as Array<
-    [GuideState, string]
-  >) {
-    if (clips.has(state)) continue;
+  for (const state of STATES) {
     const bundled = pickClip(avatar.animations, state);
-    if (bundled) {
-      clips.set(state, bundled);
-      continue;
-    }
-    const external = await loadOrNull(loader, path);
-    const clip = external && pickClip(external.animations, state);
-    if (clip) clips.set(state, clip);
+    if (bundled) clips.set(state, bundled);
   }
 
-  if (clips.size === 0) {
-    // A T-posing avatar looks more broken than a moving primitive one.
-    console.debug("[walk] avatar found but no animations; keeping procedural guide");
+  // External clip files fill the gaps, gated on exact-name binding.
+  const bones = new Set<string>();
+  model.traverse((child) => {
+    if ((child as THREE.Bone).isBone) bones.add(child.name);
+  });
+  for (const [state, path] of Object.entries(animationPaths(identity))) {
+    if (clips.has(state as GuideState)) continue;
+    const file = await loadOrNull(loader, path);
+    const clip = file?.animations[0];
+    if (!clip) continue;
+    const accepted = bindByExactName(clip, bones);
+    if (accepted) clips.set(state as GuideState, accepted);
+  }
+
+  // A guide standing calmly while speaking reads fine; missing talk clips
+  // borrow the idle. Missing idle or walk cannot be papered over.
+  const idle = clips.get("idle");
+  if (idle) {
+    if (!clips.has("speaking")) clips.set("speaking", idle);
+    if (!clips.has("gesturing")) clips.set("gesturing", clips.get("speaking") ?? idle);
+  }
+
+  if (!clips.has("idle") || !clips.has("walking")) {
+    // A T-posing or sliding avatar looks more broken than a moving primitive
+    // one, so an avatar without idle+walk is rejected outright.
+    console.debug("[walk] no idle/walk clips bind to this avatar; keeping procedural guide");
     return null;
   }
 
@@ -205,6 +251,88 @@ function loadOrNull(
   });
 }
 
+const STATES: GuideState[] = ["idle", "walking", "speaking", "gesturing"];
+
+/**
+ * Accepts a clip only if it drives every core bone of this avatar by exact
+ * name, dropping tracks for optional bones the body lacks (fingertip ends,
+ * jaw, eyes). Returns null when the clip was authored for a different
+ * skeleton — those bind zero core bones, because their names carry a rig
+ * prefix.
+ */
+function bindByExactName(
+  clip: THREE.AnimationClip,
+  bones: Set<string>
+): THREE.AnimationClip | null {
+  const bound = clip.clone();
+  bound.tracks = bound.tracks.filter((track) => {
+    const dot = track.name.indexOf(".");
+    return dot > 0 && bones.has(track.name.slice(0, dot));
+  });
+
+  const driven = new Set(
+    bound.tracks.map((track) => track.name.slice(0, track.name.indexOf(".")))
+  );
+  const coreCovered = CORE_BONES.every(
+    (core) => !bones.has(core) || driven.has(core)
+  );
+  if (!coreCovered || driven.size === 0) return null;
+
+  return bound;
+}
+
+/**
+ * Rotates the model so it faces +Z, which is the direction followPath walks
+ * and the face-the-user code assumes.
+ *
+ * Detected from the skeleton rather than configured: the toes sit forward of
+ * the ankles on any humanoid stance, so the ankle→toe direction is the facing.
+ * Hardcoding an offset per model is how an avatar ends up walking backwards
+ * the day someone swaps the file.
+ */
+function faceForward(model: THREE.Object3D) {
+  model.updateWorldMatrix(true, true);
+
+  const bones: THREE.Object3D[] = [];
+  model.traverse((child) => {
+    if ((child as THREE.Bone).isBone) bones.push(child);
+  });
+  const foot = bones.find((b) => /LeftFoot$/i.test(b.name));
+  const toe = bones.find((b) => /LeftToe(Base)?(_End)?$/i.test(b.name));
+  if (!foot || !toe) return;
+
+  const forward = toe
+    .getWorldPosition(new THREE.Vector3())
+    .sub(foot.getWorldPosition(new THREE.Vector3()));
+  forward.y = 0;
+  if (forward.lengthSq() < 1e-8) return;
+
+  // Rotating by -yaw carries the detected forward direction onto +Z.
+  model.rotation.y -= Math.atan2(forward.x, forward.z);
+}
+
+/**
+ * Scales the avatar to a human height and drops its feet to y=0.
+ *
+ * Without this a Mixamo export lands 1.7cm tall and an RPM one floats, because
+ * each toolchain picks its own units and origin.
+ */
+function normalizeHeight(model: THREE.Object3D) {
+  model.updateWorldMatrix(true, true);
+  const box = new THREE.Box3().setFromObject(model);
+  const size = box.getSize(new THREE.Vector3());
+  if (!Number.isFinite(size.y) || size.y <= 0) return;
+
+  const scale = TARGET_HEIGHT / size.y;
+  model.scale.multiplyScalar(scale);
+
+  // Re-measure after scaling; the feet must sit on the ground plane, not the
+  // model's arbitrary origin.
+  model.updateWorldMatrix(true, true);
+  const scaled = new THREE.Box3().setFromObject(model);
+  model.position.y -= scaled.min.y;
+}
+
 /** Matches a clip by name, falling back to the file's only clip. */
 function pickClip(
   clips: THREE.AnimationClip[],
@@ -213,10 +341,11 @@ function pickClip(
   if (clips.length === 0) return null;
 
   const keywords: Record<GuideState, string[]> = {
-    idle: ["idle", "stand"],
+    idle: ["idle", "stand", "breathing"],
     walking: ["walk", "locomotion"],
-    speaking: ["talk", "speak"],
-    gesturing: ["gesture", "point", "talk"],
+    // "agree" is a nod — the closest thing to a talking beat in the library.
+    speaking: ["talk", "speak", "agree"],
+    gesturing: ["gesture", "point", "talk", "headshake", "agree"],
   };
 
   for (const keyword of keywords[state]) {
