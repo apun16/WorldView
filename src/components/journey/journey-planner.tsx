@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { CountryInfo } from "@/lib/country-index";
 import type { AgentIdentity } from "@/lib/agents";
 import {
@@ -12,21 +13,24 @@ import {
 } from "@/lib/destinations";
 import type { LocalTime } from "@/lib/local-time";
 import { recordJourney } from "@/lib/journey-history";
+import { walkHref } from "@/lib/walk/walk-plan";
 import JourneyShell from "@/components/journey/journey-shell";
-import DepartureCard from "@/components/journey/departure-card";
 
 export default function JourneyPlanner({
   country,
   guide,
   localTime,
+  language,
 }: {
   country: CountryInfo;
   guide: AgentIdentity;
   /** Computed on the server so hydration cannot disagree about the hour. */
   localTime: LocalTime;
+  language: string | null;
 }) {
+  const router = useRouter();
   const [stops, setStops] = useState<DestinationId[]>([]);
-  const [departed, setDeparted] = useState(false);
+  const [departing, setDeparting] = useState(false);
 
   const isFull = stops.length >= MAX_STOPS;
   const canDepart = stops.length >= MIN_STOPS && stops.length <= MAX_STOPS;
@@ -40,27 +44,15 @@ export default function JourneyPlanner({
   };
 
   const depart = () => {
+    setDeparting(true);
     recordJourney({
       iso2: country.iso2,
       guideId: guide.id,
       guideName: guide.name,
       stops,
     });
-    setDeparted(true);
+    router.push(walkHref(country.iso2, guide.id, stops, language));
   };
-
-  if (departed) {
-    return (
-      <JourneyShell country={country}>
-        <DepartureCard
-          country={country}
-          guide={guide}
-          stops={stops}
-          localTime={localTime}
-        />
-      </JourneyShell>
-    );
-  }
 
   return (
     <JourneyShell country={country}>
@@ -159,18 +151,20 @@ export default function JourneyPlanner({
 
       <button
         onClick={depart}
-        disabled={!canDepart}
+        disabled={!canDepart || departing}
         className={`mt-10 w-full rounded-full px-4 py-3 text-center font-mono text-xs transition-colors sm:w-auto sm:self-start sm:px-8 ${
           canDepart
-            ? "bg-sky-400/90 text-[#05070d] hover:bg-sky-300"
+            ? "bg-sky-400/90 text-[#05070d] hover:bg-sky-300 disabled:cursor-wait disabled:opacity-70"
             : "cursor-not-allowed bg-white/5 text-zinc-600"
         }`}
       >
-        {canDepart
-          ? `begin the walk with ${guide.name}`
-          : `pick ${MIN_STOPS - stops.length} more ${
-              MIN_STOPS - stops.length === 1 ? "place" : "places"
-            }`}
+        {departing
+          ? "setting off…"
+          : canDepart
+            ? `begin the walk with ${guide.name}`
+            : `pick ${MIN_STOPS - stops.length} more ${
+                MIN_STOPS - stops.length === 1 ? "place" : "places"
+              }`}
       </button>
     </JourneyShell>
   );

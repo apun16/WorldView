@@ -4,10 +4,12 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import type { CountryInfo } from "@/lib/country-index";
 import type { AgentIdentity } from "@/lib/agents";
 import type { DestinationId } from "@/lib/destinations";
+import type { LocalTime } from "@/lib/local-time";
 import type { DialogueBeat, WalkScript } from "@/lib/walk/walk-script";
 import { WalkEngine, type WalkPhase } from "@/components/walk/walk-engine";
 import { LookControls } from "@/components/walk/look-controls";
 import WalkOverlay from "@/components/walk/walk-overlay";
+import WalkVoice from "@/components/walk/walk-voice";
 
 // Capability checks are environment reads, not React state — useSyncExternalStore
 // is the sanctioned way to do them without a setState-in-effect cascade, and it
@@ -35,6 +37,7 @@ export default function WalkExperience({
   script,
   accentColor,
   streetCredit,
+  localTime,
 }: {
   country: CountryInfo;
   guide: AgentIdentity;
@@ -43,6 +46,8 @@ export default function WalkExperience({
   accentColor: string;
   /** Mapillary photographer, credited when their image is on screen (CC BY-SA). */
   streetCredit?: string | null;
+  /** Computed on the server so hydration cannot disagree about the hour. */
+  localTime: LocalTime;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<WalkEngine | null>(null);
@@ -158,6 +163,15 @@ export default function WalkExperience({
             : null
         }
       />
+
+      {!presenting && (
+        <WalkVoice
+          country={country}
+          guide={guide}
+          stops={stops}
+          localTime={localTime}
+        />
+      )}
     </main>
   );
 }

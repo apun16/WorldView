@@ -6,6 +6,7 @@ import { parseStopsParam } from "@/lib/walk/walk-plan";
 import { buildWalkScript } from "@/lib/walk/walk-script";
 import { GLOBE_PALETTES } from "@/lib/globe-palettes";
 import { findStreetPhoto } from "@/lib/mapillary";
+import { localTimeFromLongitude } from "@/lib/local-time";
 
 // The scene is client-only, like the globe.
 const WalkExperience = dynamic(() => import("@/components/walk/walk-experience"));
@@ -47,6 +48,7 @@ export default async function WalkPage({
       script={script}
       accentColor={GLOBE_PALETTES[2].selected}
       streetCredit={streetPhoto?.creator ?? null}
+      localTime={localTimeFromLongitude(country.lng)}
     />
   );
 }
