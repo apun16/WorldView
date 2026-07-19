@@ -2,51 +2,52 @@ import Link from "next/link";
 import type { CountryInfo } from "@/lib/country-index";
 import type { AgentIdentity } from "@/lib/agents";
 import { findDestination, type DestinationId } from "@/lib/destinations";
-import { walkHref } from "@/lib/walk/walk-plan";
+import type { LocalTime } from "@/lib/local-time";
+import WalkSession from "@/components/journey/walk-session";
 
 /**
- * The handoff point into the walk. Confirms the recorded route, then hands off
- * to /explore/[iso2]/walk.
+ * Confirms the planned route, then hands off to a live ElevenLabs voice walk.
  */
 export default function DepartureCard({
   country,
   guide,
   stops,
-  language,
+  localTime,
 }: {
   country: CountryInfo;
   guide: AgentIdentity;
   stops: DestinationId[];
-  /** Which language the guide should teach; null falls back on the walk route. */
-  language?: string | null;
+  localTime: LocalTime;
 }) {
   return (
     <div>
-      <h1 className="mt-2 font-serif text-3xl text-cream">
+      <h1 className="mt-2 font-serif text-3xl text-zinc-50">
         {guide.name} is ready
       </h1>
-      <p className="mt-2 text-sm text-cream/60">
+      <p className="mt-2 text-sm text-zinc-400">
         Your route through {country.name} is saved.
       </p>
 
-      <ol className="mt-8 flex flex-col gap-px overflow-hidden rounded-2xl border border-cream/10">
+      <ol className="mt-8 flex flex-col gap-px overflow-hidden rounded-xl border border-white/10">
         {stops.map((id, index) => {
           const destination = findDestination(id);
           if (!destination) return null;
           return (
             <li
               key={id}
-              className="flex items-center gap-4 bg-cream/[0.03] px-4 py-3.5"
+              className="flex items-center gap-4 bg-white/[0.03] px-4 py-3.5"
             >
-              <span className="font-serif text-sm italic text-apricot/70">
-                {index + 1}
+              <span className="font-mono text-xs text-sky-300/70">
+                {String(index + 1).padStart(2, "0")}
               </span>
-              <span className="text-lg text-cream/40">{destination.glyph}</span>
+              <span className="font-mono text-lg text-zinc-500">
+                {destination.glyph}
+              </span>
               <span>
-                <span className="block text-sm text-cream">
+                <span className="block text-sm text-zinc-100">
                   {destination.label}
                 </span>
-                <span className="mt-0.5 block text-xs text-cream/45">
+                <span className="mt-0.5 block text-xs text-zinc-500">
                   {destination.tagline}
                 </span>
               </span>
@@ -55,25 +56,16 @@ export default function DepartureCard({
         })}
       </ol>
 
-      <div className="mt-8 rounded-2xl border border-cream/10 bg-cream/[0.03] p-5">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-cream/45">
-          Next
-        </p>
-        <p className="mt-2 text-sm leading-relaxed text-cream/60">
-          {guide.name} will meet you at the first stop and move between these
-          places with you, teaching you words as you go.
-        </p>
-        <Link
-          href={walkHref(country.iso2, guide.id, stops, language)}
-          className="mt-5 block w-full rounded-full bg-apricot px-4 py-2.5 text-center text-sm font-semibold text-dusk-deep transition-colors hover:bg-[#f8cb95]"
-        >
-          Enter the walk →
-        </Link>
-      </div>
+      <WalkSession
+        country={country}
+        guide={guide}
+        stops={stops}
+        localTime={localTime}
+      />
 
       <Link
         href="/explore"
-        className="mt-8 inline-block text-xs text-cream/45 underline decoration-cream/20 underline-offset-4 transition-colors hover:text-cream/80"
+        className="mt-8 inline-block font-mono text-xs text-zinc-500 underline decoration-zinc-700 underline-offset-4 transition-colors hover:text-zinc-300"
       >
         plan another journey →
       </Link>

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import AuthShell from "@/components/auth/auth-shell";
-import { loginWithAuth0 } from "@/lib/auth-actions";
 
 export default function LoginPage() {
   return (
@@ -10,24 +9,25 @@ export default function LoginPage() {
       footer={
         <>
           New here?{" "}
-          <Link href="/signup" className="text-apricot hover:text-[#f8cb95]">
+          <Link href="/signup" className="text-sky-300 hover:text-sky-200">
             Create an account
           </Link>
         </>
       }
     >
-      <form action={loginWithAuth0} className="flex flex-col gap-4">
-        <button
-          type="submit"
-          className="mt-2 rounded-full bg-apricot px-5 py-2.5 text-sm font-semibold text-dusk-deep transition-colors hover:bg-[#f8cb95]"
+      <div className="flex flex-col gap-4">
+        {/* Plain <a> required: /auth/login must be a full-page GET (Auth0 SDK). */}
+        <a
+          href="/auth/login?returnTo=/explore"
+          className="mt-2 rounded-full bg-sky-400 px-5 py-2.5 text-center text-sm font-medium text-[#05070d] transition-colors hover:bg-sky-300"
         >
           Continue with Auth0
-        </button>
+        </a>
 
-        <p className="text-center text-[11px] text-cream/35">
+        <p className="text-center font-mono text-[10px] text-zinc-600">
           This opens your Auth0 Universal Login flow.
         </p>
-      </form>
+      </div>
     </AuthShell>
   );
 }

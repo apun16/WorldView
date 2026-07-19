@@ -7,8 +7,10 @@ import type { GlobeMethods } from "react-globe.gl";
 import type { CountryCollection, CountryFeature, SemanticConnection } from "@/lib/geo-types";
 import CulturePanel from "@/components/globe/culture-panel";
 import ConnectionTicker from "@/components/globe/connection-ticker";
-import { ACTIVE_PALETTE } from "@/lib/globe-palettes";
+import ConnectionsPanel from "@/components/globe/connections-panel";
+import { ACTIVE_PALETTE, heatColorFor } from "@/lib/globe-palettes";
 import CountrySearch from "@/components/globe/country-search";
+import { ALLIANCES } from "@/lib/alliances";
 import {
   getCountryAgentMarkers,
   getCountryAgents,
@@ -44,7 +46,18 @@ export default function CultureGlobe() {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [hoveredAgent, setHoveredAgent] = useState<Agent | null>(null);
   const [connections, setConnections] = useState<SemanticConnection[]>([]);
+  const [showLanguageThreads, setShowLanguageThreads] = useState(false);
+  const [activeAlliances, setActiveAlliances] = useState<Set<string>>(new Set());
   const palette = ACTIVE_PALETTE;
+
+  const toggleAlliance = useCallback((id: string) => {
+    setActiveAlliances((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     fetch("/data/countries-enriched.geojson")
@@ -103,6 +116,8 @@ export default function CultureGlobe() {
     });
   }, [palette]);
 
+  const panelOpen = panel.kind !== "idle";
+
   const selectedIso2 =
     panel.kind === "country" ? panel.country.properties.iso2 : null;
   const activeLanguage = panel.kind === "language" ? panel.language : null;
@@ -131,6 +146,11 @@ export default function CultureGlobe() {
       }
       if (activeContinent && f.properties.continent === activeContinent) {
         return palette.continentGlow;
+      }
+      // Data views (climate, language diversity) colour each country by its
+      // metric; the plain earth palette uses one flat base.
+      if (palette.heatmap) {
+        return heatColorFor(palette.heatmap, f.properties);
       }
       return palette.base;
     },
@@ -263,7 +283,19 @@ export default function CultureGlobe() {
     }
   }, [agentsData, agentColor]);
 
-  const arcsData = useMemo(() => {
+  type ArcDatum = {
+    startLat: number;
+    startLng: number;
+    endLat: number;
+    endLng: number;
+    label: string;
+    fromName: string;
+    toName: string;
+    kind: "semantic" | "language" | "alliance";
+    color?: string;
+  };
+
+  const semanticArcs = useMemo<ArcDatum[]>(() => {
     if (countries.length === 0 || connections.length === 0) return [];
     const byIso2 = new Map(countries.map((c) => [c.properties.iso2, c]));
     return connections
@@ -279,18 +311,78 @@ export default function CultureGlobe() {
           label: conn.label,
           fromName: from.properties.name,
           toName: to.properties.name,
+          kind: "semantic" as const,
         };
       })
-      .filter(Boolean) as Array<{
-        startLat: number;
-        startLng: number;
-        endLat: number;
-        endLng: number;
-        label: string;
-        fromName: string;
-        toName: string;
-      }>;
+      .filter(Boolean) as ArcDatum[];
   }, [countries, connections]);
+
+  // Hub-and-spoke threads: countries sharing a language all connect to the
+  // first country listing that language.
+  const languageArcs = useMemo<ArcDatum[]>(() => {
+    if (!showLanguageThreads || countries.length === 0) return [];
+    const byLanguage = new Map<string, CountryFeature[]>();
+    for (const c of countries) {
+      for (const lang of c.properties.languages) {
+        const group = byLanguage.get(lang);
+        if (group) group.push(c);
+        else byLanguage.set(lang, [c]);
+      }
+    }
+    const arcs: ArcDatum[] = [];
+    for (const [language, group] of byLanguage) {
+      if (group.length < 2) continue;
+      const [hub, ...spokes] = group;
+      for (const spoke of spokes) {
+        arcs.push({
+          startLat: hub.properties.lat,
+          startLng: hub.properties.lng,
+          endLat: spoke.properties.lat,
+          endLng: spoke.properties.lng,
+          label: language,
+          fromName: hub.properties.name,
+          toName: spoke.properties.name,
+          kind: "language",
+        });
+      }
+    }
+    return arcs;
+  }, [countries, showLanguageThreads]);
+
+  // Hub-and-spoke threads for each checked alliance: members connect to the
+  // alliance's first listed (host) country.
+  const allianceArcs = useMemo<ArcDatum[]>(() => {
+    if (activeAlliances.size === 0 || countries.length === 0) return [];
+    const byIso2 = new Map(countries.map((c) => [c.properties.iso2, c]));
+    const arcs: ArcDatum[] = [];
+    for (const alliance of ALLIANCES) {
+      if (!activeAlliances.has(alliance.id)) continue;
+      const members = alliance.members
+        .map((iso2) => byIso2.get(iso2))
+        .filter(Boolean) as CountryFeature[];
+      if (members.length < 2) continue;
+      const [hub, ...spokes] = members;
+      for (const spoke of spokes) {
+        arcs.push({
+          startLat: hub.properties.lat,
+          startLng: hub.properties.lng,
+          endLat: spoke.properties.lat,
+          endLng: spoke.properties.lng,
+          label: alliance.name,
+          fromName: hub.properties.name,
+          toName: spoke.properties.name,
+          kind: "alliance",
+          color: alliance.color,
+        });
+      }
+    }
+    return arcs;
+  }, [countries, activeAlliances]);
+
+  const arcsData = useMemo(
+    () => [...semanticArcs, ...languageArcs, ...allianceArcs],
+    [semanticArcs, languageArcs, allianceArcs]
+  );
 
   return (
     <div ref={containerRef} className="relative h-full w-full">
@@ -317,12 +409,20 @@ export default function CultureGlobe() {
         onPolygonHover={(feat) => setHovered((feat as CountryFeature) ?? null)}
         onPolygonClick={handleCountryClick}
         arcsData={arcsData}
-        arcColor={() => ["rgba(251,191,36,0.9)", "rgba(251,191,36,0.15)"]}
-        arcDashLength={0.4}
-        arcDashGap={2}
-        arcDashInitialGap={() => Math.random() * 3}
-        arcDashAnimateTime={4000}
-        arcStroke={0.6}
+        arcColor={(d: object) => {
+          const a = d as ArcDatum;
+          if (a.kind === "alliance") return [a.color ?? "#fff", a.color ?? "#fff"];
+          if (a.kind === "language")
+            return ["rgba(226,232,240,0.55)", "rgba(226,232,240,0.55)"];
+          return ["rgba(249,115,22,0.95)", "rgba(249,115,22,0.15)"];
+        }}
+        arcDashLength={(d: object) => ((d as ArcDatum).kind === "semantic" ? 0.4 : 1)}
+        arcDashGap={(d: object) => ((d as ArcDatum).kind === "semantic" ? 2 : 0)}
+        arcDashInitialGap={(d: object) =>
+          (d as ArcDatum).kind === "semantic" ? Math.random() * 3 : 0
+        }
+        arcDashAnimateTime={(d: object) => ((d as ArcDatum).kind === "semantic" ? 4000 : 0)}
+        arcStroke={(d: object) => ((d as ArcDatum).kind === "semantic" ? 0.6 : 0.35)}
         arcAltitudeAutoScale={0.35}
         objectsData={agentsData}
         objectLat={(d: object) => (d as AgentMarker).lat}
@@ -344,16 +444,53 @@ export default function CultureGlobe() {
         }}
       />
 
-      <ConnectionTicker connections={arcsData} />
+      <ConnectionTicker connections={semanticArcs} />
 
       {panel.kind === "idle" && (
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <CountrySearch countries={countries} onSelect={handleCountryClick} />
+          <CountrySearch countries={countries} onSelect={handleCountryClick} shifted={panelOpen} />
         </div>
       )}
-      {panel.kind !== "idle" && (
-        <div className="animate-out fade-out slide-out-to-bottom-2 duration-300 pointer-events-none" />
-      )}
+
+      <ConnectionsPanel
+        alliances={ALLIANCES}
+        activeAlliances={activeAlliances}
+        onToggleAlliance={toggleAlliance}
+        showLanguageThreads={showLanguageThreads}
+        onToggleLanguageThreads={() => setShowLanguageThreads((v) => !v)}
+      />
+
+      <div className="absolute left-1/2 top-5 z-10 flex -translate-x-1/2 flex-col items-center">
+        <PaletteSlider
+          palettes={GLOBE_PALETTES}
+          index={paletteIndex}
+          onChange={setPaletteIndex}
+        />
+
+        {palette.heatmap && (
+          <div className="pointer-events-none flex items-center gap-2 rounded-full border border-white/10 bg-[#070a14]/80 px-3 py-1.5 backdrop-blur-md">
+            <span className="font-mono text-[9px] text-zinc-400">
+              {palette.heatmap.legend.low}
+            </span>
+            <span
+              className="h-1.5 w-28 rounded-full"
+              style={{
+                background: `linear-gradient(to right, ${scaleToGradient(palette.heatmap.scale)})`,
+              }}
+            />
+            <span className="font-mono text-[9px] text-zinc-400">
+              {palette.heatmap.legend.high}
+            </span>
+          </div>
+        )}
+      </div>
+
+      <CountrySearch
+        countries={countries}
+        onSelect={handleCountryClick}
+        shifted={panelOpen}
+      />
+>>>>>>> origin/main
 
       <CulturePanel
         panel={panel}
