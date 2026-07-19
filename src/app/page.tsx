@@ -4,29 +4,29 @@ import GreetingTicker from "@/components/hero/greeting-ticker";
 
 export default function Home() {
   return (
-    <main className="relative h-screen w-full overflow-hidden bg-dusk">
-      {/* ASCII-rendered scenes of the world, graded like city lights at dusk */}
+    <main className="relative h-screen w-full overflow-hidden bg-[#05070d]">
+      {/* ASCII-rendered scenes of the world */}
       <AsciiScene />
 
       {/* legibility scrims */}
-      <div className="grain pointer-events-none absolute inset-0" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(21,16,32,0.35)_0%,_rgba(21,16,32,0.72)_70%,_rgba(15,11,24,0.9)_100%)]" />
+      <div className="scanlines pointer-events-none absolute inset-0" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(5,7,13,0.35)_0%,_rgba(5,7,13,0.72)_70%,_rgba(5,7,13,0.9)_100%)]" />
 
       {/* wordmark */}
-      <div className="absolute left-6 top-6 flex items-center gap-2 font-serif text-lg tracking-tight text-cream sm:left-10 sm:top-8">
-        <span className="text-apricot">◉</span>
-        <span>worldview</span>
+      <div className="absolute left-6 top-6 flex items-center gap-2 font-mono text-sm tracking-tight text-zinc-200 sm:left-10 sm:top-8">
+        <span className="text-sky-300">◉</span>
+        <span className="font-medium">worldview</span>
       </div>
 
       {/* centre content */}
       <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
-        <h1 className="font-serif text-4xl font-normal leading-[1.05] tracking-tight text-cream sm:text-6xl md:text-7xl">
+        <h1 className="font-serif text-4xl font-normal leading-[1.05] tracking-tight text-zinc-50 sm:text-6xl md:text-7xl">
           See the world through
           <br />
           the people who live in it
         </h1>
 
-        <p className="mt-6 max-w-md text-sm leading-relaxed text-cream/75 sm:text-base">
+        <p className="mt-6 max-w-md text-sm leading-relaxed text-zinc-300/90 sm:text-base">
           An interactive globe where every place has a voice. Meet someone local,
           walk their streets, and learn their language one real conversation at a
           time.
@@ -35,13 +35,13 @@ export default function Home() {
         <div className="mt-9 flex items-center gap-4">
           <Link
             href="/signup"
-            className="rounded-full bg-apricot px-7 py-2.5 text-sm font-semibold text-dusk-deep transition-colors hover:bg-[#f8cb95]"
+            className="rounded-full bg-sky-400 px-7 py-2.5 text-sm font-medium text-[#05070d] transition-colors hover:bg-sky-300"
           >
             Sign up
           </Link>
           <Link
             href="/login"
-            className="rounded-full border border-cream/20 px-7 py-2.5 text-sm font-medium text-cream backdrop-blur-sm transition-colors hover:border-cream/40 hover:bg-cream/5"
+            className="rounded-full border border-white/15 px-7 py-2.5 text-sm font-medium text-zinc-100 backdrop-blur-sm transition-colors hover:border-white/30 hover:bg-white/5"
           >
             Log in
           </Link>

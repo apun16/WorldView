@@ -12,10 +12,10 @@ export default function GuidePicker({
 }) {
   return (
     <JourneyShell country={country}>
-      <h1 className="mt-2 font-serif text-3xl text-cream">
+      <h1 className="mt-2 font-serif text-3xl text-zinc-50">
         Who would you like to walk with?
       </h1>
-      <p className="mt-2 text-sm text-cream/60">
+      <p className="mt-2 text-sm text-zinc-400">
         These are the guides you could meet around {country.capital}.
       </p>
 
@@ -24,18 +24,20 @@ export default function GuidePicker({
           <Link
             key={guide.id}
             href={`/explore/${country.iso2}/journey?guide=${guide.id}`}
-            className="flex items-center justify-between rounded-xl border border-cream/10 bg-cream/5 px-4 py-3.5 transition-colors hover:border-apricot/40 hover:bg-apricot/10"
+            className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-4 py-3.5 transition-colors hover:border-sky-400/40 hover:bg-sky-400/10"
           >
             <div>
-              <div className="flex items-center gap-1.5 text-sm text-cream">
-                <span className="text-xs text-cream/40">
+              <div className="flex items-center gap-1.5 text-sm text-zinc-100">
+                <span className="font-mono text-xs text-zinc-500">
                   {guide.gender === "female" ? "♀" : "♂"}
                 </span>
                 {guide.name}
               </div>
-              <div className="text-xs text-cream/45">{country.capital}</div>
+              <div className="font-mono text-[11px] text-zinc-500">
+                {country.capital}
+              </div>
             </div>
-            <span className="text-cream/40">→</span>
+            <span className="text-zinc-500">→</span>
           </Link>
         ))}
       </div>

@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { Karla, Geist_Mono, Instrument_Serif } from "next/font/google";
+import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 
-const karla = Karla({
-  variable: "--font-karla",
+const geistSans = Geist({
+  variable: "--font-geist-sans",
   subsets: ["latin"],
 });
 
@@ -16,7 +16,6 @@ const instrumentSerif = Instrument_Serif({
   variable: "--font-instrument-serif",
   weight: "400",
   subsets: ["latin"],
-  style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
@@ -33,9 +32,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${karla.variable} ${geistMono.variable} ${instrumentSerif.variable} h-full antialiased dark`}
+      className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} h-full antialiased dark`}
     >
-      <body className="min-h-full flex flex-col bg-dusk text-cream">
+      <body className="min-h-full flex flex-col bg-[#05070d] text-zinc-100">
         {children}
       </body>
     </html>

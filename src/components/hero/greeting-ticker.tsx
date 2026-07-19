@@ -33,13 +33,13 @@ export default function GreetingTicker() {
 
   return (
     <div
-      className={`flex items-baseline gap-2 text-xs text-apricot/80 transition-opacity duration-500 ${
+      className={`flex items-baseline gap-2 font-mono text-xs text-sky-200/80 transition-opacity duration-500 ${
         visible ? "opacity-100" : "opacity-0"
       }`}
     >
-      <span className="text-sm text-cream">{g.word}</span>
-      <span className="font-serif italic text-apricot/60">{g.roman}</span>
-      <span className="text-cream/40">· {g.lang}</span>
+      <span className="text-sm text-sky-100">{g.word}</span>
+      <span className="text-sky-300/50">/ {g.roman}</span>
+      <span className="text-zinc-500">· {g.lang}</span>
     </div>
   );
 }
