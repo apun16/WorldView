@@ -1,10 +1,13 @@
 import Link from "next/link";
 import AsciiScene from "@/components/hero/ascii-scene";
 import GreetingTicker from "@/components/hero/greeting-ticker";
+import LoadingBurst from "@/components/hero/loading-burst";
 
 export default function Home() {
   return (
     <main className="relative h-screen w-full overflow-hidden bg-[#05070d]">
+      <LoadingBurst />
+
       {/* ASCII-rendered scenes of the world */}
       <AsciiScene />
 
@@ -13,9 +16,8 @@ export default function Home() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(5,7,13,0.35)_0%,_rgba(5,7,13,0.72)_70%,_rgba(5,7,13,0.9)_100%)]" />
 
       {/* wordmark */}
-      <div className="absolute left-6 top-6 flex items-center gap-2 font-mono text-sm tracking-tight text-zinc-200 sm:left-10 sm:top-8">
-        <span className="text-sky-300">◉</span>
-        <span className="font-medium">worldview</span>
+      <div className="absolute left-6 top-6 font-mono text-sm font-medium tracking-tight text-zinc-200 sm:left-10 sm:top-8">
+        worldview
       </div>
 
       {/* centre content */}

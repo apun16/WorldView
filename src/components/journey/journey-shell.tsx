@@ -16,10 +16,9 @@ export default function JourneyShell({
         <div className="flex items-center justify-between">
           <Link
             href="/explore"
-            className="flex items-center gap-2 font-mono text-sm tracking-tight text-zinc-200 transition-colors hover:text-white"
+            className="font-mono text-sm font-medium tracking-tight text-zinc-200 transition-colors hover:text-white"
           >
-            <span className="text-sky-300">◉</span>
-            <span className="font-medium">worldview</span>
+            worldview
           </Link>
           <Link
             href="/explore"

@@ -19,11 +19,10 @@ export default function AuthShell({
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(5,7,13,0.55)_0%,_rgba(5,7,13,0.85)_65%,_rgba(5,7,13,0.96)_100%)]" />
 
       <Link
-        href="/"
-        className="absolute left-6 top-6 flex items-center gap-2 font-mono text-sm tracking-tight text-zinc-200 sm:left-10 sm:top-8"
+        href="/explore"
+        className="absolute left-6 top-6 z-10 font-mono text-sm font-medium tracking-tight text-zinc-200 transition-colors hover:text-white sm:left-10 sm:top-8"
       >
-        <span className="text-sky-300">◉</span>
-        <span className="font-medium">worldview</span>
+        worldview
       </Link>
 
       <div className="relative w-full max-w-sm rounded-2xl border border-white/10 bg-[#0a0d18]/80 p-8 backdrop-blur-md">
