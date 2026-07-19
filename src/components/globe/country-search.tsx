@@ -7,9 +7,11 @@ import { fuzzyDistance, fuzzyThreshold } from "@/lib/fuzzy-match";
 export default function CountrySearch({
   countries,
   onSelect,
+  shifted = false,
 }: {
   countries: CountryFeature[];
   onSelect: (country: CountryFeature) => void;
+  shifted?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -56,7 +58,11 @@ export default function CountrySearch({
   };
 
   return (
-    <div className="absolute bottom-5 right-5 z-10 w-56 sm:w-64">
+    <div
+      className={`absolute bottom-5 z-10 w-56 transition-[right] duration-300 ease-out sm:w-64 ${
+        shifted ? "right-[calc(1.25rem+min(90vw,380px))]" : "right-5"
+      }`}
+    >
       <div className="relative">
         <input
           ref={inputRef}

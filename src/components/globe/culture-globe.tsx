@@ -105,6 +105,8 @@ export default function CultureGlobe() {
     });
   }, [palette]);
 
+  const panelOpen = panel.kind !== "idle";
+
   const selectedIso2 =
     panel.kind === "country" ? panel.country.properties.iso2 : null;
   const activeLanguage = panel.kind === "language" ? panel.language : null;
@@ -375,7 +377,11 @@ export default function CultureGlobe() {
         )}
       </div>
 
-      <CountrySearch countries={countries} onSelect={handleCountryClick} />
+      <CountrySearch
+        countries={countries}
+        onSelect={handleCountryClick}
+        shifted={panelOpen}
+      />
 
       <CulturePanel
         panel={panel}
