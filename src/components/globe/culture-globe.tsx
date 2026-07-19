@@ -7,9 +7,11 @@ import type { GlobeMethods } from "react-globe.gl";
 import type { CountryCollection, CountryFeature, SemanticConnection } from "@/lib/geo-types";
 import CulturePanel from "@/components/globe/culture-panel";
 import ConnectionTicker from "@/components/globe/connection-ticker";
+import ConnectionsPanel from "@/components/globe/connections-panel";
 import { GLOBE_PALETTES, heatColorFor, scaleToGradient } from "@/lib/globe-palettes";
 import PaletteSlider from "@/components/globe/palette-slider";
 import CountrySearch from "@/components/globe/country-search";
+import { ALLIANCES } from "@/lib/alliances";
 import {
   getCountryAgentMarkers,
   getCountryAgents,
@@ -46,7 +48,18 @@ export default function CultureGlobe() {
   const [hoveredAgent, setHoveredAgent] = useState<Agent | null>(null);
   const [paletteIndex, setPaletteIndex] = useState(0);
   const [connections, setConnections] = useState<SemanticConnection[]>([]);
+  const [showLanguageThreads, setShowLanguageThreads] = useState(false);
+  const [activeAlliances, setActiveAlliances] = useState<Set<string>>(new Set());
   const palette = GLOBE_PALETTES[paletteIndex];
+
+  const toggleAlliance = useCallback((id: string) => {
+    setActiveAlliances((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     fetch("/data/countries-enriched.geojson")
@@ -272,7 +285,19 @@ export default function CultureGlobe() {
     }
   }, [agentsData, agentColor]);
 
-  const arcsData = useMemo(() => {
+  type ArcDatum = {
+    startLat: number;
+    startLng: number;
+    endLat: number;
+    endLng: number;
+    label: string;
+    fromName: string;
+    toName: string;
+    kind: "semantic" | "language" | "alliance";
+    color?: string;
+  };
+
+  const semanticArcs = useMemo<ArcDatum[]>(() => {
     if (countries.length === 0 || connections.length === 0) return [];
     const byIso2 = new Map(countries.map((c) => [c.properties.iso2, c]));
     return connections
@@ -288,18 +313,78 @@ export default function CultureGlobe() {
           label: conn.label,
           fromName: from.properties.name,
           toName: to.properties.name,
+          kind: "semantic" as const,
         };
       })
-      .filter(Boolean) as Array<{
-        startLat: number;
-        startLng: number;
-        endLat: number;
-        endLng: number;
-        label: string;
-        fromName: string;
-        toName: string;
-      }>;
+      .filter(Boolean) as ArcDatum[];
   }, [countries, connections]);
+
+  // Hub-and-spoke threads: countries sharing a language all connect to the
+  // first country listing that language.
+  const languageArcs = useMemo<ArcDatum[]>(() => {
+    if (!showLanguageThreads || countries.length === 0) return [];
+    const byLanguage = new Map<string, CountryFeature[]>();
+    for (const c of countries) {
+      for (const lang of c.properties.languages) {
+        const group = byLanguage.get(lang);
+        if (group) group.push(c);
+        else byLanguage.set(lang, [c]);
+      }
+    }
+    const arcs: ArcDatum[] = [];
+    for (const [language, group] of byLanguage) {
+      if (group.length < 2) continue;
+      const [hub, ...spokes] = group;
+      for (const spoke of spokes) {
+        arcs.push({
+          startLat: hub.properties.lat,
+          startLng: hub.properties.lng,
+          endLat: spoke.properties.lat,
+          endLng: spoke.properties.lng,
+          label: language,
+          fromName: hub.properties.name,
+          toName: spoke.properties.name,
+          kind: "language",
+        });
+      }
+    }
+    return arcs;
+  }, [countries, showLanguageThreads]);
+
+  // Hub-and-spoke threads for each checked alliance: members connect to the
+  // alliance's first listed (host) country.
+  const allianceArcs = useMemo<ArcDatum[]>(() => {
+    if (activeAlliances.size === 0 || countries.length === 0) return [];
+    const byIso2 = new Map(countries.map((c) => [c.properties.iso2, c]));
+    const arcs: ArcDatum[] = [];
+    for (const alliance of ALLIANCES) {
+      if (!activeAlliances.has(alliance.id)) continue;
+      const members = alliance.members
+        .map((iso2) => byIso2.get(iso2))
+        .filter(Boolean) as CountryFeature[];
+      if (members.length < 2) continue;
+      const [hub, ...spokes] = members;
+      for (const spoke of spokes) {
+        arcs.push({
+          startLat: hub.properties.lat,
+          startLng: hub.properties.lng,
+          endLat: spoke.properties.lat,
+          endLng: spoke.properties.lng,
+          label: alliance.name,
+          fromName: hub.properties.name,
+          toName: spoke.properties.name,
+          kind: "alliance",
+          color: alliance.color,
+        });
+      }
+    }
+    return arcs;
+  }, [countries, activeAlliances]);
+
+  const arcsData = useMemo(
+    () => [...semanticArcs, ...languageArcs, ...allianceArcs],
+    [semanticArcs, languageArcs, allianceArcs]
+  );
 
   return (
     <div ref={containerRef} className="relative h-full w-full">
@@ -326,12 +411,20 @@ export default function CultureGlobe() {
         onPolygonHover={(feat) => setHovered((feat as CountryFeature) ?? null)}
         onPolygonClick={handleCountryClick}
         arcsData={arcsData}
-        arcColor={() => ["rgba(251,191,36,0.9)", "rgba(251,191,36,0.15)"]}
-        arcDashLength={0.4}
-        arcDashGap={2}
-        arcDashInitialGap={() => Math.random() * 3}
-        arcDashAnimateTime={4000}
-        arcStroke={0.6}
+        arcColor={(d: object) => {
+          const a = d as ArcDatum;
+          if (a.kind === "alliance") return [a.color ?? "#fff", a.color ?? "#fff"];
+          if (a.kind === "language")
+            return ["rgba(226,232,240,0.55)", "rgba(226,232,240,0.55)"];
+          return ["rgba(249,115,22,0.95)", "rgba(249,115,22,0.15)"];
+        }}
+        arcDashLength={(d: object) => ((d as ArcDatum).kind === "semantic" ? 0.4 : 1)}
+        arcDashGap={(d: object) => ((d as ArcDatum).kind === "semantic" ? 2 : 0)}
+        arcDashInitialGap={(d: object) =>
+          (d as ArcDatum).kind === "semantic" ? Math.random() * 3 : 0
+        }
+        arcDashAnimateTime={(d: object) => ((d as ArcDatum).kind === "semantic" ? 4000 : 0)}
+        arcStroke={(d: object) => ((d as ArcDatum).kind === "semantic" ? 0.6 : 0.35)}
         arcAltitudeAutoScale={0.35}
         objectsData={agentsData}
         objectLat={(d: object) => (d as AgentMarker).lat}
@@ -346,11 +439,19 @@ export default function CultureGlobe() {
         }}
         arcLabel={(d: object) => {
           const a = d as { fromName: string; toName: string; label: string };
-          return `<div style="max-width:220px; font-family: ui-monospace, monospace; font-size: 11px; line-height:1.4; padding: 6px 9px; background: rgba(5,7,13,0.92); border: 1px solid rgba(251,191,36,0.35); border-radius: 6px; color: #fde68a;">${a.fromName} → ${a.toName}<br/><span style="color:#fef3c7;">${a.label}</span></div>`;
+          return `<div style="max-width:220px; font-family: ui-monospace, monospace; font-size: 11px; line-height:1.4; padding: 6px 9px; background: rgba(5,7,13,0.92); border: 1px solid rgba(249,115,22,0.4); border-radius: 6px; color: #fed7aa;">${a.fromName} → ${a.toName}<br/><span style="color:#ffedd5;">${a.label}</span></div>`;
         }}
       />
 
-      <ConnectionTicker connections={arcsData} />
+      <ConnectionTicker connections={semanticArcs} />
+
+      <ConnectionsPanel
+        alliances={ALLIANCES}
+        activeAlliances={activeAlliances}
+        onToggleAlliance={toggleAlliance}
+        showLanguageThreads={showLanguageThreads}
+        onToggleLanguageThreads={() => setShowLanguageThreads((v) => !v)}
+      />
 
       <div className="absolute left-1/2 top-5 z-10 flex -translate-x-1/2 flex-col items-center">
         <PaletteSlider

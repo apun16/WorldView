@@ -43,8 +43,8 @@ export default function ConnectionTicker({ connections }: { connections: Arc[] }
         visible ? "opacity-100" : "opacity-0"
       }`}
     >
-      <p className="mt-1.5 font-mono text-xs leading-relaxed text-amber-100/90">
-        <span className="text-amber-300">
+      <p className="mt-1.5 font-mono text-xs leading-relaxed text-orange-100/90">
+        <span className="text-orange-400">
           {arc.fromName} → {arc.toName}
         </span>
         <br />
