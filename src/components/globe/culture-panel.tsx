@@ -6,11 +6,7 @@ import type { CountryFeature } from "@/lib/geo-types";
 import type { Agent } from "@/lib/agents";
 import type { PanelView } from "@/components/globe/culture-globe";
 import StayWidget from "@/components/globe/stay-widget";
-import {
-  getScenarioOptions,
-  isLanguageSupported,
-  type ScenarioId,
-} from "@/lib/supported-languages";
+import { isLanguageSupported } from "@/lib/supported-languages";
 
 export default function CulturePanel({
   panel,
@@ -52,7 +48,7 @@ export default function CulturePanel({
 
   return (
     <div
-      className={`absolute right-0 top-0 h-full w-[min(90vw,380px)] transform border-l border-cream/10 bg-dusk-panel/92 backdrop-blur-md transition-transform duration-300 ease-out ${
+      className={`absolute right-0 top-0 h-full w-[min(90vw,380px)] transform border-l border-white/10 bg-[#070a14]/92 backdrop-blur-md transition-transform duration-300 ease-out ${
         open ? "translate-x-0" : "translate-x-full"
       }`}
     >
@@ -60,7 +56,7 @@ export default function CulturePanel({
         <div className="flex h-full flex-col overflow-y-auto px-6 py-8">
           <button
             onClick={onClose}
-            className="mb-6 self-start text-xs text-cream/45 transition-colors hover:text-cream/80"
+            className="mb-6 self-start font-mono text-[11px] text-zinc-500 hover:text-zinc-300"
           >
             ← back to the globe
           </button>
@@ -73,19 +69,18 @@ export default function CulturePanel({
               selectedAgent={selectedAgent}
               onSelectAgent={onSelectAgent}
               onSelectContinent={onSelectContinent}
-              onSelectLanguage={onSelectLanguage}
             />
           )}
 
           {panel.kind === "continent" && (
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-apricot/80">
+              <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-sky-300/70">
                 {panel.continent}
               </p>
-              <h2 className="mt-2 font-serif text-2xl text-cream">
+              <h2 className="mt-2 font-serif text-2xl text-zinc-50">
                 Languages across {panel.continent}
               </h2>
-              <p className="mt-2 text-sm text-cream/60">
+              <p className="mt-2 text-sm text-zinc-400">
                 Pick a language to see every country here you could learn it in.
               </p>
 
@@ -96,17 +91,17 @@ export default function CulturePanel({
                     <button
                       key={language}
                       onClick={() => onSelectLanguage(panel.continent, language)}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-apricot/20 bg-apricot/5 px-3.5 py-2.5 text-left transition-colors hover:border-apricot/40 hover:bg-apricot/10"
+                      className="flex items-center justify-between gap-3 rounded-lg border border-amber-300/20 bg-amber-300/5 px-3.5 py-2.5 text-left transition-colors hover:border-amber-300/40 hover:bg-amber-300/10"
                     >
-                      <span className="text-sm text-apricot">
+                      <span className="font-mono text-xs text-amber-200">
                         {language}
                         {!supported && (
-                          <span className="ml-2 font-serif italic text-cream/40">
-                            coming soon
+                          <span className="ml-2 text-zinc-500">
+                            language coming soon!
                           </span>
                         )}
                       </span>
-                      <span className="shrink-0 text-xs text-apricot/50">
+                      <span className="shrink-0 font-mono text-[11px] text-amber-200/50">
                         {count}
                       </span>
                     </button>
@@ -118,21 +113,21 @@ export default function CulturePanel({
 
           {panel.kind === "language" && (
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-apricot/80">
+              <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-amber-300/70">
                 {panel.continent} · {panel.language}
               </p>
-              <h2 className="mt-2 font-serif text-2xl text-cream">
+              <h2 className="mt-2 font-serif text-2xl text-zinc-50">
                 Where to learn {panel.language}
               </h2>
-              <p className="mt-2 text-sm text-cream/60">
+              <p className="mt-2 text-sm text-zinc-400">
                 {panel.countries.length}{" "}
                 {panel.countries.length === 1 ? "country speaks" : "countries speak"}{" "}
                 {panel.language} in {panel.continent}.
               </p>
 
               {!isLanguageSupported(panel.language) && (
-                <p className="mt-3 font-serif text-sm italic text-cream/40">
-                  coming soon
+                <p className="mt-3 font-mono text-xs text-zinc-500">
+                  language coming soon!
                 </p>
               )}
 
@@ -141,15 +136,15 @@ export default function CulturePanel({
                   <button
                     key={c.properties.iso2}
                     onClick={() => onSelectCountryFromList(c)}
-                    className="flex items-center justify-between rounded-xl border border-cream/10 bg-cream/5 px-4 py-3 text-left transition-colors hover:border-apricot/40 hover:bg-apricot/10"
+                    className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-left transition-colors hover:border-sky-400/40 hover:bg-sky-400/10"
                   >
                     <div>
-                      <div className="text-sm text-cream">{c.properties.name}</div>
-                      <div className="text-xs text-cream/45">
+                      <div className="text-sm text-zinc-100">{c.properties.name}</div>
+                      <div className="font-mono text-[11px] text-zinc-500">
                         {c.properties.capital}
                       </div>
                     </div>
-                    <span className="text-cream/40">→</span>
+                    <span className="text-zinc-500">→</span>
                   </button>
                 ))}
               </div>
@@ -167,122 +162,67 @@ function CountryView({
   selectedAgent,
   onSelectAgent,
   onSelectContinent,
-  onSelectLanguage,
 }: {
   country: CountryFeature;
   agents: Agent[];
   selectedAgent: Agent | null;
   onSelectAgent: (agent: Agent) => void;
   onSelectContinent: (continent: string) => void;
-  onSelectLanguage: (continent: string, language: string) => void;
 }) {
   const p = country.properties;
   const agent = selectedAgent?.iso2 === p.iso2 ? selectedAgent : null;
   const [activeLanguage, setActiveLanguage] = useState<string | null>(
     () => p.languages.find(isLanguageSupported) ?? null
   );
-  const [activeScenario, setActiveScenario] = useState<ScenarioId | null>(null);
-
-  const scenarios = useMemo(() => {
-    if (!activeLanguage) return [];
-    return getScenarioOptions(p.capital, activeLanguage, p.iso2);
-  }, [activeLanguage, p.capital, p.iso2]);
 
   return (
     <div>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-apricot/80">
+      <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-sky-300/70">
         {p.continent}
       </p>
-      <h2 className="mt-2 font-serif text-3xl text-cream">{p.name}</h2>
-      <p className="mt-1 text-sm text-cream/60">
-        Meet a guide in <span className="text-cream">{p.capital}</span>
+      <h2 className="mt-2 font-serif text-3xl text-zinc-50">{p.name}</h2>
+      <p className="mt-1 text-sm text-zinc-400">
+        Meet a guide in <span className="text-zinc-200">{p.capital}</span>
       </p>
 
       <div className="mt-6">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cream/45">
-          Languages spoken here
-        </p>
+        <p className="font-mono text-xs text-zinc-500">languages spoken here</p>
 
         {p.languages.length === 0 && (
-          <span className="mt-2 block text-xs text-cream/35">no data available</span>
+          <span className="mt-2 block text-xs text-zinc-600">no data available</span>
         )}
 
         <div className="mt-3 flex flex-col gap-2">
           {p.languages.map((lang) => {
             const supported = isLanguageSupported(lang);
-            const expanded = supported && activeLanguage === lang;
+            const selected = supported && activeLanguage === lang;
 
             return (
-              <div
+              <button
                 key={lang}
-                className={`overflow-hidden rounded-xl border transition-colors ${
-                  expanded
-                    ? "border-apricot/40 bg-apricot/10"
-                    : "border-cream/10 bg-cream/[0.03]"
-                }`}
+                type="button"
+                onClick={() => {
+                  if (!supported) return;
+                  setActiveLanguage((prev) => (prev === lang ? null : lang));
+                }}
+                className={`flex w-full items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 text-left transition-colors ${
+                  selected
+                    ? "border-sky-400/40 bg-sky-400/10"
+                    : "border-white/10 bg-white/[0.03]"
+                } ${supported ? "cursor-pointer hover:bg-white/[0.04]" : "cursor-default"}`}
               >
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!supported) return;
-                    setActiveLanguage((prev) => (prev === lang ? null : lang));
-                    setActiveScenario(null);
-                  }}
-                  className={`flex w-full items-center justify-between gap-3 px-3.5 py-2.5 text-left ${
-                    supported
-                      ? "cursor-pointer hover:bg-cream/[0.04]"
-                      : "cursor-default"
-                  }`}
-                >
-                  <span className="text-sm text-apricot">
-                    {lang}
-                    {!supported && (
-                      <span className="ml-2 font-serif italic text-cream/40">
-                        coming soon
-                      </span>
-                    )}
-                  </span>
-                  {supported && (
-                    <span className="text-xs text-apricot/50">
-                      {expanded ? "−" : "+"}
+                <span className="font-mono text-xs text-sky-200">
+                  {lang}
+                  {!supported && (
+                    <span className="ml-2 text-zinc-500">
+                      language coming soon!
                     </span>
                   )}
-                </button>
-
-                {expanded && (
-                  <div className="border-t border-cream/10 px-2.5 py-2">
-                    <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cream/40">
-                      Pick a place to begin
-                    </p>
-                    <div className="flex flex-col gap-1">
-                      {scenarios.map((scenario) => {
-                        const selected = activeScenario === scenario.id;
-                        return (
-                          <button
-                            key={scenario.id}
-                            type="button"
-                            onClick={() => setActiveScenario(scenario.id)}
-                            className={`rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                              selected
-                                ? "bg-apricot/20 text-cream"
-                                : "text-cream/70 hover:bg-cream/5 hover:text-cream"
-                            }`}
-                          >
-                            {scenario.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => onSelectLanguage(p.continent, lang)}
-                      className="mt-2 w-full px-1 py-1.5 text-left text-xs text-cream/45 underline decoration-cream/20 underline-offset-4 transition-colors hover:text-cream/80"
-                    >
-                      see where else {lang} is spoken →
-                    </button>
-                  </div>
+                </span>
+                {selected && (
+                  <span className="font-mono text-[10px] text-sky-300/50">✓</span>
                 )}
-              </div>
+              </button>
             );
           })}
         </div>
@@ -290,17 +230,15 @@ function CountryView({
 
       <button
         onClick={() => onSelectContinent(p.continent)}
-        className="mt-8 text-xs text-cream/45 underline decoration-cream/20 underline-offset-4 transition-colors hover:text-cream/80"
+        className="mt-8 font-mono text-xs text-zinc-500 underline decoration-zinc-700 underline-offset-4 hover:text-zinc-300"
       >
         see every language in {p.continent} →
       </button>
 
       <div className="mt-8">
         <div className="flex items-baseline justify-between">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cream/45">
-            Guides you could meet
-          </p>
-          <p className="text-xs text-cream/35">{agents.length}</p>
+          <p className="font-mono text-xs text-zinc-500">guides you could meet</p>
+          <p className="font-mono text-[11px] text-zinc-600">{agents.length}</p>
         </div>
 
         <div className="mt-2 flex flex-col gap-1.5">
@@ -311,22 +249,22 @@ function CountryView({
                 key={a.id}
                 onClick={() => onSelectAgent(a)}
                 aria-pressed={isSelected}
-                className={`flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-left transition-colors ${
+                className={`flex items-center justify-between rounded-lg border px-3.5 py-2.5 text-left transition-colors ${
                   isSelected
-                    ? "border-ember/50 bg-ember/10"
-                    : "border-cream/10 bg-cream/[0.03] hover:border-apricot/30 hover:bg-apricot/[0.07]"
+                    ? "border-fuchsia-400/40 bg-fuchsia-400/10"
+                    : "border-white/10 bg-white/[0.03] hover:border-sky-400/30 hover:bg-sky-400/[0.07]"
                 }`}
               >
                 <span
-                  className={`flex items-center gap-1.5 text-sm ${isSelected ? "text-cream" : "text-cream/75"}`}
+                  className={`flex items-center gap-1.5 text-sm ${isSelected ? "text-zinc-50" : "text-zinc-300"}`}
                 >
-                  <span className="text-xs text-cream/40">
+                  <span className="font-mono text-xs text-zinc-500">
                     {a.gender === "female" ? "♀" : "♂"}
                   </span>
                   {a.name}
                 </span>
                 {isSelected && (
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-ember">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-fuchsia-300/70">
                     selected
                   </span>
                 )}
@@ -336,13 +274,13 @@ function CountryView({
         </div>
       </div>
 
-      <div className="mt-8 rounded-2xl border border-cream/10 bg-cream/[0.03] p-4">
-        <p className="text-xs leading-relaxed text-cream/60">
+      <div className="mt-8 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <p className="text-xs leading-relaxed text-zinc-400">
           {activeLanguage ? (
             <>
               {agent ? agent.name : "A local guide"} will meet you in {p.capital}{" "}
               and walk you through a few places, teaching you{" "}
-              <span className="text-cream">{activeLanguage}</span> as you go.
+              <span className="text-zinc-200">{activeLanguage}</span> as you go.
             </>
           ) : (
             <>
@@ -357,12 +295,12 @@ function CountryView({
             href={`/explore/${p.iso2}/journey?guide=${agent.id}${
               activeLanguage ? `&lang=${encodeURIComponent(activeLanguage)}` : ""
             }`}
-            className="mt-4 block w-full rounded-full bg-apricot px-4 py-2.5 text-center text-sm font-semibold text-dusk-deep transition-colors hover:bg-[#f8cb95]"
+            className="mt-4 block w-full rounded-full bg-sky-400/90 px-4 py-2.5 text-center font-mono text-xs text-[#05070d] transition-colors hover:bg-sky-300"
           >
-            Plan your walk with {agent.name} →
+            plan your walk with {agent.name} →
           </Link>
         ) : (
-          <p className="mt-4 text-center font-serif text-sm italic text-cream/45">
+          <p className="mt-4 text-center font-mono text-[11px] text-zinc-500">
             pick a guide on the map to begin
           </p>
         )}

@@ -8,7 +8,8 @@ import type { CountryCollection, CountryFeature, SemanticConnection } from "@/li
 import CulturePanel from "@/components/globe/culture-panel";
 import ConnectionTicker from "@/components/globe/connection-ticker";
 import ConnectionsPanel from "@/components/globe/connections-panel";
-import { ACTIVE_PALETTE, heatColorFor } from "@/lib/globe-palettes";
+import { GLOBE_PALETTES, ACTIVE_PALETTE, heatColorFor, scaleToGradient } from "@/lib/globe-palettes";
+import PaletteSlider from "@/components/globe/palette-slider";
 import CountrySearch from "@/components/globe/country-search";
 import { ALLIANCES } from "@/lib/alliances";
 import {
@@ -48,7 +49,13 @@ export default function CultureGlobe() {
   const [connections, setConnections] = useState<SemanticConnection[]>([]);
   const [showLanguageThreads, setShowLanguageThreads] = useState(false);
   const [activeAlliances, setActiveAlliances] = useState<Set<string>>(new Set());
-  const palette = ACTIVE_PALETTE;
+  const [paletteIndex, setPaletteIndex] = useState(() =>
+    Math.max(
+      0,
+      GLOBE_PALETTES.findIndex((p) => p.id === ACTIVE_PALETTE.id)
+    )
+  );
+  const palette = GLOBE_PALETTES[paletteIndex];
 
   const toggleAlliance = useCallback((id: string) => {
     setActiveAlliances((prev) => {
@@ -404,7 +411,7 @@ export default function CultureGlobe() {
         polygonsTransitionDuration={250}
         polygonLabel={(feat: object) => {
           const f = feat as CountryFeature;
-          return `<div style="font-family: var(--font-karla), sans-serif; font-size: 12.5px; padding: 5px 10px; background: rgba(21,14,30,0.92); border: 1px solid rgba(245,185,113,0.35); border-radius: 8px; color: #fdeeda;">${f.properties.name}</div>`;
+          return `<div style="font-family: ui-monospace, monospace; font-size: 12.5px; padding: 5px 10px; background: rgba(21,14,30,0.92); border: 1px solid rgba(245,185,113,0.35); border-radius: 8px; color: #fdeeda;">${f.properties.name}</div>`;
         }}
         onPolygonHover={(feat) => setHovered((feat as CountryFeature) ?? null)}
         onPolygonClick={handleCountryClick}
@@ -434,13 +441,13 @@ export default function CultureGlobe() {
         objectLabel={(d: object) => {
           const a = d as AgentMarker;
           if (a.id === selectedAgent?.id) {
-            return `<div style="font-family: var(--font-karla), sans-serif; font-size: 12.5px; padding: 5px 10px; background: rgba(21,14,30,0.92); border: 1px solid rgba(245,185,113,0.35); border-radius: 8px; color: #fdeeda;">${a.name}</div>`;
+            return `<div style="font-family: ui-monospace, monospace; font-size: 12.5px; padding: 5px 10px; background: rgba(21,14,30,0.92); border: 1px solid rgba(245,185,113,0.35); border-radius: 8px; color: #fdeeda;">${a.name}</div>`;
           }
           return "";
         }}
         arcLabel={(d: object) => {
           const a = d as { fromName: string; toName: string; label: string };
-          return `<div style="max-width:220px; font-family: var(--font-karla), sans-serif; font-size: 11.5px; line-height:1.45; padding: 7px 10px; background: rgba(21,14,30,0.93); border: 1px solid rgba(233,196,106,0.35); border-radius: 10px; color: #e9c46a;">${a.fromName} → ${a.toName}<br/><span style="color:#fdeeda;">${a.label}</span></div>`;
+          return `<div style="max-width:220px; font-family: ui-monospace, monospace; font-size: 11.5px; line-height:1.45; padding: 7px 10px; background: rgba(21,14,30,0.93); border: 1px solid rgba(233,196,106,0.35); border-radius: 10px; color: #e9c46a;">${a.fromName} → ${a.toName}<br/><span style="color:#fdeeda;">${a.label}</span></div>`;
         }}
       />
 
@@ -485,13 +492,6 @@ export default function CultureGlobe() {
         )}
       </div>
 
-      <CountrySearch
-        countries={countries}
-        onSelect={handleCountryClick}
-        shifted={panelOpen}
-      />
->>>>>>> origin/main
-
       <CulturePanel
         panel={panel}
         countries={countries}
@@ -505,8 +505,8 @@ export default function CultureGlobe() {
       />
 
       {panel.kind === "idle" && (
-        <div className="pointer-events-none absolute bottom-5 left-1/2 -translate-x-1/2 font-serif text-sm italic tracking-wide text-cream/45">
-          tap a country to meet someone there · drag to wander
+        <div className="pointer-events-none absolute bottom-5 left-1/2 -translate-x-1/2 font-mono text-[10px] tracking-widest text-zinc-500">
+          click a country to begin · drag to explore
         </div>
       )}
     </div>
