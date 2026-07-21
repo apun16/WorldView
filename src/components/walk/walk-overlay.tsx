@@ -4,9 +4,11 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import type { WalkPhase } from "@/components/walk/walk-engine";
 import { findDestination, type DestinationId } from "@/lib/destinations";
+import { stay22Href } from "@/lib/stay22-links";
 
 export default function WalkOverlay({
   guideName,
+  guideId,
   countryIso2,
   stops,
   stopIndex,
@@ -17,8 +19,10 @@ export default function WalkOverlay({
   onEnableGyro,
   photoCredit,
   teaching,
+  language,
 }: {
   guideName: string;
+  guideId: string;
   countryIso2: string;
   stops: DestinationId[];
   stopIndex: number;
@@ -32,10 +36,22 @@ export default function WalkOverlay({
   photoCredit?: string | null;
   /** Live ElevenLabs teaching UI — replaces the old scripted scenery box. */
   teaching?: ReactNode;
+  language?: string | null;
 }) {
   if (hidden) return null;
 
   const destination = findDestination(stops[stopIndex]);
+  const atHome = stops[stopIndex] === "home" && phase === "ready";
+  const stayHref = stay22Href(countryIso2, {
+    guide: guideId,
+    lang: language,
+    near:
+      stops[stopIndex] === "home"
+        ? "home"
+        : (stops[stops.length - 1] ?? "capital"),
+    stops,
+    from: "walk",
+  });
 
   return (
     <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-5 sm:p-8">
@@ -86,17 +102,32 @@ export default function WalkOverlay({
       <div className="flex w-full flex-col items-center gap-4">
         {teaching}
 
+        {atHome && (
+          <Link
+            href={stayHref}
+            className="pointer-events-auto rounded-full border border-amber-300/25 bg-amber-300/[0.07] px-4 py-2 font-mono text-[11px] text-amber-100/90 transition-colors hover:border-amber-300/40"
+          >
+            if you stayed the night →
+          </Link>
+        )}
+
         {phase === "complete" ? (
           <div className="pointer-events-auto flex flex-col items-center gap-3">
             <p className="text-center text-sm text-zinc-300">
               You walked with {guideName} through {stops.length} places.
             </p>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap justify-center gap-2">
               <Link
-                href={`/explore/${countryIso2}/journey`}
+                href={stayHref}
                 className="rounded-full bg-sky-400/90 px-6 py-2.5 font-mono text-xs text-[#05070d] transition-colors hover:bg-sky-300"
               >
-                plan another walk →
+                sleep where you walked →
+              </Link>
+              <Link
+                href={`/explore/${countryIso2}/journey`}
+                className="rounded-full border border-white/15 px-6 py-2.5 font-mono text-xs text-zinc-300 transition-colors hover:text-white"
+              >
+                plan another walk
               </Link>
               <Link
                 href="/explore"

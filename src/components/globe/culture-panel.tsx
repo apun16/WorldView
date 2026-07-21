@@ -6,7 +6,7 @@ import type { CountryFeature } from "@/lib/geo-types";
 import type { Agent } from "@/lib/agents";
 import type { PanelView } from "@/components/globe/culture-globe";
 import StayWidget from "@/components/globe/stay-widget";
-import { isLanguageSupported } from "@/lib/supported-languages";
+import { isLanguageSupported, preferredLanguage } from "@/lib/supported-languages";
 import { SEVERITY_COLOR, type CountryConflict } from "@/lib/acled";
 
 export default function CulturePanel({
@@ -179,7 +179,7 @@ function CountryView({
   const p = country.properties;
   const agent = selectedAgent?.iso2 === p.iso2 ? selectedAgent : null;
   const [activeLanguage, setActiveLanguage] = useState<string | null>(
-    () => p.languages.find(isLanguageSupported) ?? null
+    () => preferredLanguage(p.languages)
   );
 
   return (
@@ -372,10 +372,18 @@ function CountryView({
       <div className="mt-6">
         <p className="font-mono text-xs text-zinc-500">actually go there</p>
         <p className="mt-1 text-xs text-zinc-600">
-          real stays in {p.capital}, booked right now — no imagination required.
+          tap the map to unlock a night in {p.capital} — after the walk, where
+          you&apos;d really sleep.
         </p>
         <div className="mt-3">
-          <StayWidget lat={p.lat} lng={p.lng} place={`${p.capital}, ${p.name}`} />
+          <StayWidget
+            lat={p.lat}
+            lng={p.lng}
+            place={`${p.capital}, ${p.name}`}
+            iso2={p.iso2}
+            guideId={agent?.id}
+            language={activeLanguage}
+          />
         </div>
       </div>
     </div>

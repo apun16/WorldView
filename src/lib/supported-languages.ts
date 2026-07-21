@@ -210,6 +210,23 @@ export function isLanguageSupported(displayName: string): boolean {
   return resolveSupportedLanguage(displayName) !== null;
 }
 
+/**
+ * Default teaching language for a country.
+ * Prefer a supported local language over English when both are listed
+ * (e.g. India: Hindi, not English).
+ */
+export function preferredLanguage(
+  countryLanguages: string[]
+): string | null {
+  if (countryLanguages.length === 0) return null;
+
+  const supported = countryLanguages.filter(isLanguageSupported);
+  if (supported.length === 0) return countryLanguages[0] ?? null;
+
+  const local = supported.find((name) => !/^english$/i.test(name.trim()));
+  return local ?? supported[0];
+}
+
 export type ScenarioId = "capital" | "kitchen" | "attraction" | "market";
 
 export type ScenarioOption = {

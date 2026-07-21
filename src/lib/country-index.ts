@@ -98,7 +98,7 @@ export const COUNTRY_INDEX: CountryInfo[] = [
   { iso2: "ID", name: "Indonesia", continent: "Asia", subregion: "south-eastern-asia", capital: "Jakarta", lat: -5, lng: 120, capitalLat: -6.1753, capitalLng: 106.8269, languages: ["Indonesian"] },
   { iso2: "IE", name: "Ireland", continent: "Europe", subregion: "northern-europe", capital: "Dublin", lat: 53, lng: -8, capitalLat: 53.3497, capitalLng: -6.2603, languages: ["English","Irish"] },
   { iso2: "IL", name: "Israel", continent: "Asia", subregion: "western-asia", capital: "Jerusalem", lat: 31.47, lng: 35.13, capitalLat: 31.7767, capitalLng: 35.2342, languages: ["Arabic","Hebrew"] },
-  { iso2: "IN", name: "India", continent: "Asia", subregion: "southern-asia", capital: "New Delhi", lat: 20, lng: 77, capitalLat: 28.6139, capitalLng: 77.2089, languages: ["English","Hindi","Tamil"] },
+  { iso2: "IN", name: "India", continent: "Asia", subregion: "southern-asia", capital: "New Delhi", lat: 20, lng: 77, capitalLat: 28.6139, capitalLng: 77.2089, languages: ["Hindi","Tamil","English"] },
   { iso2: "IQ", name: "Iraq", continent: "Asia", subregion: "western-asia", capital: "Baghdad", lat: 33, lng: 44, capitalLat: 33.3153, capitalLng: 44.3661, languages: ["Arabic","Aramaic","Sorani"] },
   { iso2: "IR", name: "Iran", continent: "Asia", subregion: "southern-asia", capital: "Tehran", lat: 32, lng: 53, capitalLat: 35.6889, capitalLng: 51.3897, languages: ["Persian (Farsi)"] },
   { iso2: "IS", name: "Iceland", continent: "Europe", subregion: "northern-europe", capital: "Reykjavik", lat: 65, lng: -18, capitalLat: 64.1475, capitalLng: -21.935, languages: ["Icelandic"] },

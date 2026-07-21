@@ -1,6 +1,6 @@
 import type { Language } from "@elevenlabs/client";
 import {
-  isLanguageSupported,
+  preferredLanguage,
   resolveSupportedLanguage,
 } from "@/lib/supported-languages";
 
@@ -90,11 +90,11 @@ export type WalkLanguage = {
 
 /**
  * Pick a walk language from a country's spoken list.
- * Prefers the first WorldView-supported language; otherwise English.
+ * Prefers a supported local language over English when both are available.
  */
 export function pickWalkLanguage(countryLanguages: string[]): WalkLanguage {
   const preferred =
-    countryLanguages.find(isLanguageSupported) ??
+    preferredLanguage(countryLanguages) ??
     countryLanguages.find((l) => /english/i.test(l)) ??
     "English";
 

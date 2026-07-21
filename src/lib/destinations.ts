@@ -48,6 +48,10 @@ export const MAX_STOPS = 4;
 
 const byId = new Map(DESTINATIONS.map((d) => [d.id, d]));
 
+export function isDestinationId(id: string): id is DestinationId {
+  return byId.has(id as DestinationId);
+}
+
 export function findDestination(id: DestinationId): Destination | null {
   return byId.get(id) ?? null;
 }

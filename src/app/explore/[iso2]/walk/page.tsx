@@ -7,6 +7,7 @@ import { buildWalkScript } from "@/lib/walk/walk-script";
 import { GLOBE_PALETTES } from "@/lib/globe-palettes";
 import { findStreetPhoto } from "@/lib/mapillary";
 import { localTimeFromLongitude } from "@/lib/local-time";
+import { preferredLanguage } from "@/lib/supported-languages";
 
 // The scene is client-only, like the globe.
 const WalkExperience = dynamic(() => import("@/components/walk/walk-experience"));
@@ -33,7 +34,7 @@ export default async function WalkPage({
   const stops = parseStopsParam(rawStops);
   if (!stops) redirect(`/explore/${country.iso2}/journey?guide=${agent.id}`);
 
-  const language = lang ?? country.languages[0] ?? null;
+  const language = lang ?? preferredLanguage(country.languages);
   const script = buildWalkScript(country, agent, stops, language);
 
   // Resolved here so the photographer can be credited. Next dedupes this with

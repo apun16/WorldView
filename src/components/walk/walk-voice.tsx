@@ -17,6 +17,8 @@ import {
   resolveSceneId,
 } from "@/lib/walk-variables";
 import { stripAudioTags } from "@/lib/elevenlabs-transcript";
+import { buildStayStory } from "@/lib/stay-story";
+import type { StayListing, StayNear } from "@/lib/stay22";
 
 type WalkVoiceProps = {
   country: CountryInfo;
@@ -103,12 +105,57 @@ function WalkVoiceInner({
         throw new Error("No conversation token returned");
       }
 
+      const near = stops.includes("home")
+        ? "home"
+        : stops[0] ?? "capital";
+      let guestStay: {
+        name?: string;
+        area?: string;
+        hint?: string;
+        why?: string;
+        word?: string;
+      } | null = null;
+      try {
+        const staysRes = await fetch(
+          `/api/stays?iso2=${encodeURIComponent(country.iso2)}&near=${near}`
+        );
+        if (staysRes.ok) {
+          const staysBody = (await staysRes.json()) as {
+            stays?: StayListing[];
+          };
+          const listings = staysBody.stays ?? [];
+          const first = listings[0];
+          if (first) {
+            const story = buildStayStory({
+              country,
+              guide,
+              stays: listings,
+              stops,
+              near: near as StayNear,
+              localTime,
+              languageDisplayName: language.displayName,
+              fromWalk: true,
+            });
+            guestStay = {
+              name: first.name,
+              area: first.area,
+              hint: first.hint,
+              why: story.guestStayWhy,
+              word: story.guestStayWord,
+            };
+          }
+        }
+      } catch {
+        /* stays are optional for the walk voice session */
+      }
+
       const dynamicVariables = buildWalkDynamicVariables({
         country,
         guide,
         stops,
         language,
         localTime,
+        guestStay,
       });
 
       conversation.startSession({

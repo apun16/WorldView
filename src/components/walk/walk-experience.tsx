@@ -151,6 +151,7 @@ export default function WalkExperience({
     >
       <WalkOverlay
         guideName={guide.name}
+        guideId={guide.id}
         countryIso2={country.iso2}
         stops={stops}
         stopIndex={stopIndex}
@@ -159,6 +160,7 @@ export default function WalkExperience({
         showGyro={gyroSupported && !gyroOn}
         onAdvance={advance}
         onEnableGyro={enableGyro}
+        language={script.language}
         photoCredit={
           photoSource?.startsWith("/api/street-photo")
             ? (streetCredit ?? "Mapillary contributor")

@@ -36,6 +36,14 @@ export type WalkDynamicVariables = {
   season_or_weather: string;
   proficiency_level: string;
   is_regional_holiday: string;
+  /** Live Stay22 listing the guide can offer as a guest night. */
+  guest_stay_name: string;
+  guest_stay_area: string;
+  guest_stay_hint: string;
+  /** Why this bed — walk-seeded cultural reason. */
+  guest_stay_why: string;
+  /** Hospitality word to say at the desk. */
+  guest_stay_word: string;
 };
 
 export function locationPhrase(stop: DestinationId): string {
@@ -89,9 +97,23 @@ export function buildWalkDynamicVariables(input: {
   proficiencyLevel?: string;
   /** From a holiday calendar later. */
   isRegionalHoliday?: boolean | string;
+  /** Live Stay22 featured stay (optional). */
+  guestStay?: {
+    name?: string;
+    area?: string;
+    hint?: string;
+    why?: string;
+    word?: string;
+  } | null;
+  /**
+   * Override for {{current_location}} / {{location_type}}.
+   * Stay22 night page uses this so the guide isn't stuck at the first walk stop.
+   */
+  currentLocation?: string;
 }): WalkDynamicVariables {
   const phrases = input.stops.map(locationPhrase);
-  const current = phrases[0] ?? "the neighborhood street";
+  const current =
+    input.currentLocation ?? phrases[0] ?? "the neighborhood street";
 
   const holiday = input.isRegionalHoliday;
   const holidayValue =
@@ -112,5 +134,12 @@ export function buildWalkDynamicVariables(input: {
     season_or_weather: input.seasonOrWeather ?? "typical for the season",
     proficiency_level: input.proficiencyLevel ?? "beginner",
     is_regional_holiday: holidayValue,
+    guest_stay_name: input.guestStay?.name ?? "a local guesthouse",
+    guest_stay_area: input.guestStay?.area ?? "near the places you walked",
+    guest_stay_hint: input.guestStay?.hint ?? "available for guests tonight",
+    guest_stay_why:
+      input.guestStay?.why ??
+      "A quiet place to sleep near the streets you walked.",
+    guest_stay_word: input.guestStay?.word ?? "welcome",
   };
 }
